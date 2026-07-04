@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // In this app, admins are stored in the 'users' collection with role 'admin'
+      // Get the user document and check their role
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- products ---
+    match /products/{productId} {
+      allow read: if true;
+      // Allow creation during seeding (which is done client-side when DB is empty) OR if they are an admin
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- faqs ---
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow create: if true; // Allow seeding
+      allow update, delete: if isAdmin();
+    }
+
+    // --- notices ---
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow create: if true; // Allow seeding
+      // Allow everyone to increment views (views update hasOnly['views']) or admin can modify any fields
+      allow update: if (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['views'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- reviews ---
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true; // Allow seeding and user review creation
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+    }
+
+    // --- users (UserProfile) ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Allow user to update their own profile (points, attendance, etc.) OR admin to update it
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // --- orders ---
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- custom_orders ---
+    match /custom_orders/{customOrderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- event_logs ---
+    match /event_logs/{eventLogId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

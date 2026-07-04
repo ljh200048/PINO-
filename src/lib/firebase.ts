@@ -46,6 +46,53 @@ const db = getFirestore(app, firestoreDbId);
 
 export { app, auth, db };
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid || null,
+      email: auth.currentUser?.email || null,
+      emailVerified: auth.currentUser?.emailVerified || null,
+      isAnonymous: auth.currentUser?.isAnonymous || null,
+      tenantId: auth.currentUser?.tenantId || null,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // Mock Seed Data
 const SEED_PRODUCTS: Omit<Product, 'id'>[] = [
   {
@@ -266,90 +313,118 @@ export async function seedInitialDatabase() {
     console.log('Database seeded successfully!');
   } catch (error) {
     console.error('Error seeding database: ', error);
+    handleFirestoreError(error, OperationType.WRITE, 'products');
   }
 }
 
 // User Profile management
 export async function getOrCreateUserProfile(user: User, customDisplayName?: string): Promise<UserProfile> {
-  const profileRef = doc(db, 'users', user.uid);
-  const profileSnap = await getDoc(profileRef);
+  try {
+    const profileRef = doc(db, 'users', user.uid);
+    const profileSnap = await getDoc(profileRef);
 
-  if (profileSnap.exists()) {
-    return profileSnap.data() as UserProfile;
+    if (profileSnap.exists()) {
+      return profileSnap.data() as UserProfile;
+    }
+
+    // Create new user profile with 10% coupon & sign-up bonus points (2,000 P)
+    const isFirstAdmin = user.email === 'lch200048@gmail.com' || user.email?.startsWith('admin');
+    
+    const newProfile: UserProfile = {
+      uid: user.uid,
+      email: user.email || 'guest@pino.com',
+      displayName: customDisplayName || user.displayName || user.email?.split('@')[0] || '아기펠트',
+      points: 2000, // 2000P Sign up bonus
+      coupons: [
+        {
+          id: 'welcome-10',
+          name: '🎉 신규 오픈 웰컴 10% 할인 쿠폰',
+          discount: 10,
+          type: 'percent',
+          minOrderValue: 10000,
+          used: false,
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
+        },
+        {
+          id: 'bday-coupon',
+          name: '🎂 PINO 생일 축하 5,000원 쿠폰',
+          discount: 5000,
+          type: 'amount',
+          minOrderValue: 30000,
+          used: false,
+          expiresAt: Date.now() + 60 * 24 * 60 * 60 * 1000
+        }
+      ],
+      attendanceHistory: [],
+      attendanceStreak: 0,
+      birthday: '07-04', // Default to today
+      role: isFirstAdmin ? 'admin' : 'user',
+      createdAt: Date.now()
+    };
+
+    await setDoc(profileRef, newProfile);
+    return newProfile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+    throw error;
   }
-
-  // Create new user profile with 10% coupon & sign-up bonus points (2,000 P)
-  const isFirstAdmin = user.email === 'lch200048@gmail.com' || user.email?.startsWith('admin');
-  
-  const newProfile: UserProfile = {
-    uid: user.uid,
-    email: user.email || 'guest@pino.com',
-    displayName: customDisplayName || user.displayName || user.email?.split('@')[0] || '아기펠트',
-    points: 2000, // 2000P Sign up bonus
-    coupons: [
-      {
-        id: 'welcome-10',
-        name: '🎉 신규 오픈 웰컴 10% 할인 쿠폰',
-        discount: 10,
-        type: 'percent',
-        minOrderValue: 10000,
-        used: false,
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
-      },
-      {
-        id: 'bday-coupon',
-        name: '🎂 PINO 생일 축하 5,000원 쿠폰',
-        discount: 5000,
-        type: 'amount',
-        minOrderValue: 30000,
-        used: false,
-        expiresAt: Date.now() + 60 * 24 * 60 * 60 * 1000
-      }
-    ],
-    attendanceHistory: [],
-    attendanceStreak: 0,
-    birthday: '07-04', // Default to today
-    role: isFirstAdmin ? 'admin' : 'user',
-    createdAt: Date.now()
-  };
-
-  await setDoc(profileRef, newProfile);
-  return newProfile;
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
-  const profileRef = doc(db, 'users', uid);
-  await updateDoc(profileRef, data);
+  try {
+    const profileRef = doc(db, 'users', uid);
+    await updateDoc(profileRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+  }
 }
 
 // Get all products
 export async function fetchProducts(): Promise<Product[]> {
-  const querySnapshot = await getDocs(collection(db, 'products'));
-  const products: Product[] = [];
-  querySnapshot.forEach((doc) => {
-    products.push({ id: doc.id, ...doc.data() } as Product);
-  });
-  return products;
+  try {
+    const querySnapshot = await getDocs(collection(db, 'products'));
+    const products: Product[] = [];
+    querySnapshot.forEach((doc) => {
+      products.push({ id: doc.id, ...doc.data() } as Product);
+    });
+    return products;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'products');
+    return [];
+  }
 }
 
 // Update product
 export async function addProduct(product: Omit<Product, 'id' | 'salesCount' | 'rating' | 'reviewsCount' | 'createdAt'>): Promise<string> {
-  const newDoc = await addDoc(collection(db, 'products'), {
-    ...product,
-    salesCount: 0,
-    rating: 5.0,
-    reviewsCount: 0,
-    createdAt: Date.now()
-  });
-  return newDoc.id;
+  try {
+    const newDoc = await addDoc(collection(db, 'products'), {
+      ...product,
+      salesCount: 0,
+      rating: 5.0,
+      reviewsCount: 0,
+      createdAt: Date.now()
+    });
+    return newDoc.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'products');
+    throw error;
+  }
 }
 
 export async function updateProductDetails(id: string, data: Partial<Product>) {
-  await updateDoc(doc(db, 'products', id), data);
+  try {
+    await updateDoc(doc(db, 'products', id), data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+  }
 }
 
 export async function removeProduct(id: string) {
-  await deleteDoc(doc(db, 'products', id));
+  try {
+    await deleteDoc(doc(db, 'products', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
+  }
 }
 
 // Standard Orders

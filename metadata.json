@@ -1,0 +1,6 @@
+{
+  "name": "PINO공방",
+  "description": "세상에 하나뿐인 감성을 만드는 핸드메이드 펠트공방, PINO공방 브랜드 감성 쇼핑몰",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -71,7 +71,7 @@ export default function AdminPanel() {
   const [newProdCat, setNewProdCat] = useState<Product['category']>('felt-doll');
   const [newProdPrice, setNewProdPrice] = useState(20000);
   const [newProdDesc, setNewProdDesc] = useState('');
-  const [newProdImg, setNewProdImg] = useState('');
+  const [newProdImg, setNewProdImg] = useState('https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600');
   const [newProdStock, setNewProdStock] = useState(15);
   const [newProdSuccess, setNewProdSuccess] = useState('');
 
@@ -79,40 +79,68 @@ export default function AdminPanel() {
   const [prodImgMode, setProdImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
   const [classImgMode, setClassImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
 
+  const compressAndSetImage = (file: File, callback: (base64: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 800;
+
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+          if (width > height) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          } else {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.75);
+          callback(compressed);
+        } else {
+          callback(e.target?.result as string);
+        }
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (file.size > 1.5 * 1024 * 1024) {
-      alert('이미지 파일 크기가 너무 큽니다. 1.5MB 이하의 파일을 선택해주세요.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setNewProdImg(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    compressAndSetImage(file, (compressedBase64) => {
+      setNewProdImg(compressedBase64);
+    });
   };
 
   const handleClassImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (file.size > 1.5 * 1024 * 1024) {
-      alert('이미지 파일 크기가 너무 큽니다. 1.5MB 이하의 파일을 선택해주세요.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setNewClassImage(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    compressAndSetImage(file, (compressedBase64) => {
+      setNewClassImage(compressedBase64);
+    });
   };
 
   // Notice state
@@ -181,7 +209,7 @@ export default function AdminPanel() {
       });
 
       setNewProdName('');
-      setNewProdImg('');
+      setNewProdImg('https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600');
       setNewProdDesc('');
       setNewProdStock(15);
       setNewProdPrice(20000);
@@ -646,7 +674,7 @@ export default function AdminPanel() {
                       <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
                         <button
                           type="button"
-                          onClick={() => { setProdImgMode('preset'); setNewProdImg(''); }}
+                          onClick={() => { setProdImgMode('preset'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             prodImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -656,7 +684,7 @@ export default function AdminPanel() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setProdImgMode('url'); setNewProdImg(''); }}
+                          onClick={() => { setProdImgMode('url'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             prodImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -666,7 +694,7 @@ export default function AdminPanel() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setProdImgMode('upload'); setNewProdImg(''); }}
+                          onClick={() => { setProdImgMode('upload'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             prodImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -716,7 +744,7 @@ export default function AdminPanel() {
                           <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
                             <Upload size={18} className="text-[#C79A4A]" />
                             <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
-                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 1.5MB)</span>
+                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -1147,7 +1175,7 @@ export default function AdminPanel() {
                       <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
                         <button
                           type="button"
-                          onClick={() => { setClassImgMode('preset'); setNewClassImage(''); }}
+                          onClick={() => { setClassImgMode('preset'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             classImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -1157,7 +1185,7 @@ export default function AdminPanel() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setClassImgMode('url'); setNewClassImage(''); }}
+                          onClick={() => { setClassImgMode('url'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             classImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -1167,7 +1195,7 @@ export default function AdminPanel() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setClassImgMode('upload'); setNewClassImage(''); }}
+                          onClick={() => { setClassImgMode('upload'); }}
                           className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             classImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
                           }`}
@@ -1217,7 +1245,7 @@ export default function AdminPanel() {
                           <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
                             <Upload size={18} className="text-[#C79A4A]" />
                             <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
-                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 1.5MB)</span>
+                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
                             <input
                               type="file"
                               accept="image/*"

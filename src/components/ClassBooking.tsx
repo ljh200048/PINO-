@@ -54,6 +54,7 @@ export default function ClassBookingComponent({
   const [email, setEmail] = useState<string>('');
   const [participantsCount, setParticipantsCount] = useState<number>(1);
   const [itemToMake, setItemToMake] = useState<string>('아기곰 인형');
+  const [customItemText, setCustomItemText] = useState<string>('');
   const [request, setRequest] = useState<string>('');
   const [agreedToPrivacy, setAgreedToPrivacy] = useState<boolean>(false);
   const [bookingSuccess, setBookingSuccess] = useState<boolean>(false);
@@ -159,6 +160,11 @@ export default function ClassBookingComponent({
       return;
     }
 
+    if (itemToMake === 'custom' && !customItemText.trim()) {
+      alert('직접 만들고 싶으신 작품명을 입력해주세요.');
+      return;
+    }
+
     if (!userName.trim() || !phone.trim()) {
       alert('이름과 휴대폰 번호는 필수 입력 항목입니다.');
       return;
@@ -191,7 +197,7 @@ export default function ClassBookingComponent({
         date: selectedDate,
         time: selectedTime,
         participantsCount,
-        itemToMake,
+        itemToMake: itemToMake === 'custom' ? `✨ 자유 제작: ${customItemText.trim()}` : itemToMake,
         request,
         agreedToPrivacy
       };
@@ -293,6 +299,8 @@ export default function ClassBookingComponent({
             onClick={() => {
               setBookingSuccess(false);
               setParticipantsCount(1);
+              setItemToMake('아기곰 인형');
+              setCustomItemText('');
               setRequest('');
               setAgreedToPrivacy(false);
             }}
@@ -573,7 +581,31 @@ export default function ClassBookingComponent({
                     <option value="동글토끼 키링">🐰 동글토끼 키링</option>
                     <option value="파스텔 다람쥐">🐿️ 파스텔 다람쥐</option>
                     <option value="미니 솜쿠션">🌸 미니 솜쿠션</option>
+                    <option value="custom">✨ 직접 입력 (내가 원하는 작품 자유 제작)</option>
                   </select>
+
+                  <AnimatePresence>
+                    {itemToMake === 'custom' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: -10, height: 0 }}
+                        className="overflow-hidden pt-1"
+                      >
+                        <label className="text-[10px] font-bold text-[#C79A4A] block mb-1">
+                          원하는 작품 이름 / 설명 입력 *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="예: 보라색 귀여운 아기 고양이 인형, 꽃무늬 파우치 등"
+                          value={customItemText}
+                          onChange={(e) => setCustomItemText(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-[#FFF8F1]/60 border border-[#C79A4A] rounded-xl text-xs text-[#4A3E3D] placeholder-[#4A3E3D]/40 focus:outline-none"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 

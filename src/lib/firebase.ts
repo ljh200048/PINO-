@@ -46,6 +46,8 @@ const db = getFirestore(app, firestoreDbId);
 
 export { app, auth, db };
 
+export const ADMIN_EMAIL = 'lch200048@gmail.com';
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -465,11 +467,18 @@ export async function getOrCreateUserProfile(user: User, customDisplayName?: str
     const profileSnap = await getDoc(profileRef);
 
     if (profileSnap.exists()) {
-      return profileSnap.data() as UserProfile;
+      const data = profileSnap.data() as UserProfile;
+      // If the logging-in user's email is the designated admin email and they don't have the admin role, promote them.
+      if (user.email === ADMIN_EMAIL && data.role !== 'admin') {
+        const updatedData = { ...data, role: 'admin' as const };
+        await updateDoc(profileRef, { role: 'admin' });
+        return updatedData;
+      }
+      return data;
     }
 
     // Create new user profile with 10% coupon & sign-up bonus points (2,000 P)
-    const isFirstAdmin = user.email === 'lch200048@gmail.com' || user.email?.startsWith('admin');
+    const isFirstAdmin = user.email === ADMIN_EMAIL || user.email?.startsWith('admin');
     
     const newProfile: UserProfile = {
       uid: user.uid,

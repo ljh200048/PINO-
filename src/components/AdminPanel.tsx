@@ -33,7 +33,10 @@ import {
   AlertCircle, 
   RefreshCw,
   Megaphone,
-  Activity
+  Activity,
+  Image,
+  Link,
+  Upload
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -71,6 +74,46 @@ export default function AdminPanel() {
   const [newProdImg, setNewProdImg] = useState('');
   const [newProdStock, setNewProdStock] = useState(15);
   const [newProdSuccess, setNewProdSuccess] = useState('');
+
+  // Image modes and file upload handlers
+  const [prodImgMode, setProdImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
+  const [classImgMode, setClassImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
+
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 1.5MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setNewProdImg(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClassImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 1.5MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setNewClassImage(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Notice state
   const [newNoticeTitle, setNewNoticeTitle] = useState('');
@@ -594,18 +637,112 @@ export default function AdminPanel() {
                         className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 고유 대표 이미지</label>
-                      <select
-                        value={newProdImg}
-                        onChange={(e) => setNewProdImg(e.target.value)}
-                        className="w-full text-[11px] bg-white border border-[#E8D5C4] p-2.5 rounded-xl text-[#4A3E3D]"
-                      >
-                        <option value="">대표사진 선택</option>
-                        <option value="https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600">아기곰 브라운</option>
-                        <option value="https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600">토끼 핑크</option>
-                        <option value="https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600">오리 피규어</option>
-                      </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 대표 이미지</label>
+                    <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                      {/* Tab Buttons */}
+                      <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => { setProdImgMode('preset'); setNewProdImg(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            prodImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Image size={11} />
+                          <span>예시 사진 선택</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setProdImgMode('url'); setNewProdImg(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            prodImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Link size={11} />
+                          <span>직접 주소 입력</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setProdImgMode('upload'); setNewProdImg(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            prodImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Upload size={11} />
+                          <span>파일 업로드</span>
+                        </button>
+                      </div>
+
+                      {/* Content based on selected tab */}
+                      {prodImgMode === 'preset' && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                            { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                            { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                          ].map((preset) => (
+                            <button
+                              key={preset.url}
+                              type="button"
+                              onClick={() => setNewProdImg(preset.url)}
+                              className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                newProdImg === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
+                              }`}
+                            >
+                              <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                {preset.name}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {prodImgMode === 'url' && (
+                        <input
+                          type="url"
+                          placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                          value={newProdImg}
+                          onChange={(e) => setNewProdImg(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                        />
+                      )}
+
+                      {prodImgMode === 'upload' && (
+                        <div className="space-y-2">
+                          <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                            <Upload size={18} className="text-[#C79A4A]" />
+                            <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 1.5MB)</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProductImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Image Preview */}
+                      {newProdImg && (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                          <img src={newProdImg} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                            실시간 미리보기
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNewProdImg('')}
+                            className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1001,17 +1138,112 @@ export default function AdminPanel() {
                         className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">대표 이미지</label>
-                      <select
-                        value={newClassImage}
-                        onChange={(e) => setNewClassImage(e.target.value)}
-                        className="w-full text-[11px] bg-white border border-[#E8D5C4] p-2.5 rounded-xl text-[#4A3E3D]"
-                      >
-                        <option value="https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600">아기곰 브라운</option>
-                        <option value="https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600">토끼 핑크</option>
-                        <option value="https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600">오리 피규어</option>
-                      </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 대표 이미지</label>
+                    <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                      {/* Tab Buttons */}
+                      <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => { setClassImgMode('preset'); setNewClassImage(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            classImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Image size={11} />
+                          <span>예시 사진 선택</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setClassImgMode('url'); setNewClassImage(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            classImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Link size={11} />
+                          <span>직접 주소 입력</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setClassImgMode('upload'); setNewClassImage(''); }}
+                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            classImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Upload size={11} />
+                          <span>파일 업로드</span>
+                        </button>
+                      </div>
+
+                      {/* Content based on selected tab */}
+                      {classImgMode === 'preset' && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                            { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                            { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                          ].map((preset) => (
+                            <button
+                              key={preset.url}
+                              type="button"
+                              onClick={() => setNewClassImage(preset.url)}
+                              className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                newClassImage === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
+                              }`}
+                            >
+                              <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                {preset.name}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {classImgMode === 'url' && (
+                        <input
+                          type="url"
+                          placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                          value={newClassImage}
+                          onChange={(e) => setNewClassImage(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                        />
+                      )}
+
+                      {classImgMode === 'upload' && (
+                        <div className="space-y-2">
+                          <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                            <Upload size={18} className="text-[#C79A4A]" />
+                            <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 1.5MB)</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleClassImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Image Preview */}
+                      {newClassImage && (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                          <img src={newClassImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                            실시간 미리보기
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNewClassImage('')}
+                            className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 

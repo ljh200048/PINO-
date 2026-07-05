@@ -77,18 +77,46 @@ export default function App() {
 
   // Auth synchronization
   useEffect(() => {
+    const syncLocalUser = () => {
+      const localUserJson = localStorage.getItem('pino_fallback_user');
+      if (localUserJson) {
+        try {
+          const parsed = JSON.parse(localUserJson);
+          setUser({ uid: parsed.uid, email: parsed.email, displayName: parsed.displayName, emailVerified: true });
+          setUserProfile(parsed);
+        } catch (e) {
+          console.error('Error loading fallback user:', e);
+        }
+      } else {
+        if (!auth.currentUser) {
+          setUser(null);
+          setUserProfile(null);
+        }
+      }
+    };
+
+    // Run initially
+    syncLocalUser();
+
+    // Listen to local auth changes
+    window.addEventListener('local_auth_changed', syncLocalUser);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
       if (firebaseUser) {
+        setUser(firebaseUser);
         try {
           const profile = await getOrCreateUserProfile(firebaseUser);
           setUserProfile(profile);
           // Sync wishlist from local state or load
+          localStorage.removeItem('pino_fallback_user');
         } catch (err) {
           console.error('Error getting user profile:', err);
         }
       } else {
-        setUserProfile(null);
+        if (!localStorage.getItem('pino_fallback_user')) {
+          setUser(null);
+          setUserProfile(null);
+        }
       }
     });
 
@@ -99,7 +127,10 @@ export default function App() {
     const savedWish = localStorage.getItem('pino_wishlist');
     if (savedWish) setWishlist(JSON.parse(savedWish));
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener('local_auth_changed', syncLocalUser);
+    };
   }, []);
 
   // Save Cart to localStorage whenever modified

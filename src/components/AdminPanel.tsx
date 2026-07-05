@@ -7,6 +7,7 @@ import {
   updateCustomOrderStatus, 
   addProduct, 
   removeProduct,
+  updateProductDetails,
   addNotice,
   fetchEventLogs,
   fetchClasses,
@@ -36,7 +37,8 @@ import {
   Activity,
   Image,
   Link,
-  Upload
+  Upload,
+  Edit
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -74,6 +76,18 @@ export default function AdminPanel() {
   const [newProdImg, setNewProdImg] = useState('https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600');
   const [newProdStock, setNewProdStock] = useState(15);
   const [newProdSuccess, setNewProdSuccess] = useState('');
+
+  // Product edit states
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editProdName, setEditProdName] = useState('');
+  const [editProdCat, setEditProdCat] = useState<Product['category']>('felt-doll');
+  const [editProdPrice, setEditProdPrice] = useState(20000);
+  const [editProdDesc, setEditProdDesc] = useState('');
+  const [editProdImg, setEditProdImg] = useState('');
+  const [editProdStock, setEditProdStock] = useState(15);
+  const [editProdSuccess, setEditProdSuccess] = useState('');
+  const [editProdError, setEditProdError] = useState('');
+  const [editProdImgMode, setEditProdImgMode] = useState<'preset' | 'url' | 'upload'>('url');
 
   // Image modes and file upload handlers
   const [prodImgMode, setProdImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
@@ -126,6 +140,20 @@ export default function AdminPanel() {
 
     compressAndSetImage(file, (compressedBase64) => {
       setNewProdImg(compressedBase64);
+    });
+  };
+
+  const handleEditProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    compressAndSetImage(file, (compressedBase64) => {
+      setEditProdImg(compressedBase64);
     });
   };
 
@@ -333,9 +361,59 @@ export default function AdminPanel() {
     if (!window.confirm('정말 이 상품을 데이터베이스에서 영구 삭제하시겠습니까?')) return;
     try {
       await removeProduct(pId);
-      reloadAllData();
-    } catch (err) {
+      await reloadAllData();
+      alert('선택한 소품이 성공적으로 삭제되었습니다.');
+    } catch (err: any) {
       console.error(err);
+      alert('소품 삭제 중 오류가 발생했습니다: ' + (err.message || err));
+    }
+  };
+
+  // Start Edit Product
+  const handleStartEditProduct = (prod: Product) => {
+    setEditingProductId(prod.id);
+    setEditProdName(prod.name);
+    setEditProdCat(prod.category);
+    setEditProdPrice(prod.price);
+    setEditProdDesc(prod.description);
+    setEditProdImg(prod.images[0] || '');
+    setEditProdStock(prod.stock);
+    setEditProdSuccess('');
+    setEditProdError('');
+    setEditProdImgMode('url');
+  };
+
+  // Submit Product Edit
+  const handleEditProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditProdSuccess('');
+    setEditProdError('');
+
+    if (!editingProductId) return;
+
+    if (!editProdName.trim() || !editProdImg.trim() || !editProdDesc.trim()) {
+      setEditProdError('모든 필드를 채워주세요!');
+      return;
+    }
+
+    try {
+      const prodImgUrl = editProdImg.trim();
+      await updateProductDetails(editingProductId, {
+        name: editProdName,
+        category: editProdCat,
+        price: Number(editProdPrice),
+        description: editProdDesc,
+        images: [prodImgUrl],
+        stock: Number(editProdStock)
+      });
+
+      setEditProdSuccess('🎉 상품 정보가 성공적으로 수정되었습니다!');
+      reloadAllData();
+      alert('상품 정보가 수정되었습니다.');
+      setEditingProductId(null);
+    } catch (err: any) {
+      console.error(err);
+      setEditProdError('상품 수정 실패: ' + (err.message || err));
     }
   };
 
@@ -609,196 +687,403 @@ export default function AdminPanel() {
             {/* Product Register */}
             {activeSubTab === 'products' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Add product form (5 cols) */}
-                <form onSubmit={handleAddProductSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-black text-[#4A3E3D] uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
-                    <Plus size={14} />
-                    <span>신규 펠트 소품 추가</span>
-                  </h4>
+                {/* Add or Edit product form (5 cols) */}
+                {editingProductId ? (
+                  <form onSubmit={handleEditProductSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-black text-indigo-700 uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
+                      <Edit size={14} />
+                      <span>소품 정보 수정</span>
+                    </h4>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">소품명</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="🧸 파스텔 미니 부엉이 인형"
-                      value={newProdName}
-                      onChange={(e) => setNewProdName(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">카테고리</label>
-                      <select
-                        value={newProdCat}
-                        onChange={(e) => setNewProdCat(e.target.value as any)}
-                        className="w-full text-xs bg-white border border-[#E8D5C4] p-2.5 rounded-xl text-[#4A3E3D] focus:outline-none"
-                      >
-                        <option value="felt-doll">펠트인형</option>
-                        <option value="keyring">키링</option>
-                        <option value="mini-doll">미니소품</option>
-                        <option value="seasonal">시즌한정</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">판매가격 (원)</label>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품명</label>
                       <input
-                        type="number"
+                        type="text"
                         required
-                        value={newProdPrice}
-                        onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        placeholder="🧸 소품명 입력"
+                        value={editProdName}
+                        onChange={(e) => setEditProdName(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[#4A3E3D]"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">초기 재고량 (개)</label>
-                      <input
-                        type="number"
-                        required
-                        value={newProdStock}
-                        onChange={(e) => setNewProdStock(Number(e.target.value))}
-                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 대표 이미지</label>
-                    <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
-                      {/* Tab Buttons */}
-                      <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => { setProdImgMode('preset'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            prodImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">카테고리</label>
+                        <select
+                          value={editProdCat}
+                          onChange={(e) => setEditProdCat(e.target.value as any)}
+                          className="w-full text-xs bg-white border border-[#E8D5C4] p-2.5 rounded-xl text-[#4A3E3D] focus:outline-none"
                         >
-                          <Image size={11} />
-                          <span>예시 사진 선택</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setProdImgMode('url'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            prodImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                        >
-                          <Link size={11} />
-                          <span>직접 주소 입력</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setProdImgMode('upload'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            prodImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                        >
-                          <Upload size={11} />
-                          <span>파일 업로드</span>
-                        </button>
+                          <option value="felt-doll">펠트인형</option>
+                          <option value="keyring">키링</option>
+                          <option value="mini-doll">미니소품</option>
+                          <option value="seasonal">시즌한정</option>
+                        </select>
                       </div>
-
-                      {/* Content based on selected tab */}
-                      {prodImgMode === 'preset' && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
-                            { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
-                            { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
-                          ].map((preset) => (
-                            <button
-                              key={preset.url}
-                              type="button"
-                              onClick={() => setNewProdImg(preset.url)}
-                              className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
-                                newProdImg === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
-                              }`}
-                            >
-                              <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
-                                {preset.name}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {prodImgMode === 'url' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">판매가격 (원)</label>
                         <input
-                          type="url"
-                          placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
-                          value={newProdImg}
-                          onChange={(e) => setNewProdImg(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          type="number"
+                          required
+                          value={editProdPrice}
+                          onChange={(e) => setEditProdPrice(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
                         />
-                      )}
+                      </div>
+                    </div>
 
-                      {prodImgMode === 'upload' && (
-                        <div className="space-y-2">
-                          <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
-                            <Upload size={18} className="text-[#C79A4A]" />
-                            <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
-                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleProductImageUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">재고량 (개)</label>
+                        <input
+                          type="number"
+                          required
+                          value={editProdStock}
+                          onChange={(e) => setEditProdStock(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        />
+                      </div>
+                    </div>
 
-                      {/* Image Preview */}
-                      {newProdImg && (
-                        <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
-                          <img src={newProdImg} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
-                            실시간 미리보기
-                          </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 대표 이미지</label>
+                      <div className="bg-indigo-50/10 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                        {/* Tab Buttons */}
+                        <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
                           <button
                             type="button"
-                            onClick={() => setNewProdImg('')}
-                            className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            onClick={() => { setEditProdImgMode('preset'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editProdImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
                           >
-                            ✕
+                            <Image size={11} />
+                            <span>예시 사진 선택</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditProdImgMode('url'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editProdImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Link size={11} />
+                            <span>직접 주소 입력</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditProdImgMode('upload'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editProdImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Upload size={11} />
+                            <span>파일 업로드</span>
                           </button>
                         </div>
-                      )}
+
+                        {/* Content based on selected tab */}
+                        {editProdImgMode === 'preset' && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                              { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                              { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setEditProdImg(preset.url)}
+                                className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                  editProdImg === preset.url ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-gray-200'
+                                }`}
+                              >
+                                <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                  {preset.name}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {editProdImgMode === 'url' && (
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                            value={editProdImg}
+                            onChange={(e) => setEditProdImg(e.target.value)}
+                            className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-indigo-500 text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          />
+                        )}
+
+                        {editProdImgMode === 'upload' && (
+                          <div className="space-y-2">
+                            <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                              <Upload size={18} className="text-indigo-600" />
+                              <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                              <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEditProductImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {/* Image Preview */}
+                        {editProdImg && (
+                          <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                            <img src={editProdImg} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                              실시간 미리보기
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditProdImg('')}
+                              className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 상세 설명</label>
-                    <textarea
-                      required
-                      rows={3}
-                      placeholder="천연 오가닉 울 원단을 손으로 직접 한 땀 한 땀 마감하여 부드럽고 친근합니다..."
-                      value={newProdDesc}
-                      onChange={(e) => setNewProdDesc(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  {newProdSuccess && (
-                    <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
-                      {newProdSuccess}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 상세 설명</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="상세 설명 입력"
+                        value={editProdDesc}
+                        onChange={(e) => setEditProdDesc(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                      />
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#4A3E3D] text-white font-bold text-xs rounded-xl hover:bg-[#C79A4A] transition-colors cursor-pointer"
-                  >
-                    소품 신규 등록
-                  </button>
-                </form>
+                    {editProdSuccess && (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
+                        {editProdSuccess}
+                      </div>
+                    )}
+
+                    {editProdError && (
+                      <div className="p-2 bg-red-50 border border-red-200 text-red-800 text-[11px] rounded font-semibold text-center">
+                        {editProdError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingProductId(null)}
+                        className="flex-1 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-colors cursor-pointer"
+                      >
+                        수정 취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        수정 완료
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleAddProductSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-black text-[#4A3E3D] uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
+                      <Plus size={14} />
+                      <span>신규 펠트 소품 추가</span>
+                    </h4>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품명</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="🧸 파스텔 미니 부엉이 인형"
+                        value={newProdName}
+                        onChange={(e) => setNewProdName(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">카테고리</label>
+                        <select
+                          value={newProdCat}
+                          onChange={(e) => setNewProdCat(e.target.value as any)}
+                          className="w-full text-xs bg-white border border-[#E8D5C4] p-2.5 rounded-xl text-[#4A3E3D] focus:outline-none"
+                        >
+                          <option value="felt-doll">펠트인형</option>
+                          <option value="keyring">키링</option>
+                          <option value="mini-doll">미니소품</option>
+                          <option value="seasonal">시즌한정</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">판매가격 (원)</label>
+                        <input
+                          type="number"
+                          required
+                          value={newProdPrice}
+                          onChange={(e) => setNewProdPrice(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">초기 재고량 (개)</label>
+                        <input
+                          type="number"
+                          required
+                          value={newProdStock}
+                          onChange={(e) => setNewProdStock(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 대표 이미지</label>
+                      <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                        {/* Tab Buttons */}
+                        <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => { setProdImgMode('preset'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              prodImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Image size={11} />
+                            <span>예시 사진 선택</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setProdImgMode('url'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              prodImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Link size={11} />
+                            <span>직접 주소 입력</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setProdImgMode('upload'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              prodImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Upload size={11} />
+                            <span>파일 업로드</span>
+                          </button>
+                        </div>
+
+                        {/* Content based on selected tab */}
+                        {prodImgMode === 'preset' && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                              { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                              { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setNewProdImg(preset.url)}
+                                className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                  newProdImg === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
+                                }`}
+                              >
+                                <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                  {preset.name}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {prodImgMode === 'url' && (
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                            value={newProdImg}
+                            onChange={(e) => setNewProdImg(e.target.value)}
+                            className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          />
+                        )}
+
+                        {prodImgMode === 'upload' && (
+                          <div className="space-y-2">
+                            <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                              <Upload size={18} className="text-[#C79A4A]" />
+                              <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                              <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleProductImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {/* Image Preview */}
+                        {newProdImg && (
+                          <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                            <img src={newProdImg} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                              실시간 미리보기
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setNewProdImg('')}
+                              className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">소품 상세 설명</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="천연 오가닉 울 원단을 손으로 직접 한 땀 한 땀 마감하여 부드럽고 친근합니다..."
+                        value={newProdDesc}
+                        onChange={(e) => setNewProdDesc(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    {newProdSuccess && (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
+                        {newProdSuccess}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-[#4A3E3D] text-white font-bold text-xs rounded-xl hover:bg-[#C79A4A] transition-colors cursor-pointer"
+                    >
+                      소품 신규 등록
+                    </button>
+                  </form>
+                )}
 
                 {/* Products list table (7 cols) */}
                 <div className="lg:col-span-7 bg-white border border-[#E8D5C4] rounded-2xl p-5 overflow-x-auto">
@@ -815,7 +1100,7 @@ export default function AdminPanel() {
                         <th className="py-2">카테고리</th>
                         <th className="py-2">금액</th>
                         <th className="py-2">재고</th>
-                        <th className="py-2 text-right">제거</th>
+                        <th className="py-2 text-right">관리</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -829,12 +1114,28 @@ export default function AdminPanel() {
                           <td className="py-2 font-semibold">{prod.price.toLocaleString()}원</td>
                           <td className="py-2 font-mono">{prod.stock}개</td>
                           <td className="py-2 text-right">
-                            <button
-                              onClick={() => handleDeleteProduct(prod.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleStartEditProduct(prod)}
+                                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                  editingProductId === prod.id 
+                                    ? 'bg-indigo-600 text-white shadow-xs' 
+                                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80'
+                                }`}
+                                title="수정하기"
+                              >
+                                <Edit size={11} />
+                                <span>수정하기</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(prod.id)}
+                                className="px-2.5 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                title="제거"
+                              >
+                                <Trash2 size={11} />
+                                <span>제거</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

@@ -24,6 +24,7 @@ import {
   deleteDoc,
   writeBatch
 } from 'firebase/firestore';
+import { getStorage, ref, deleteObject } from 'firebase/storage';
 import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview } from '../types';
 
 // Load values directly from the config
@@ -43,8 +44,9 @@ const auth = getAuth(app);
 // Use custom Firestore Database ID from our configuration file
 const firestoreDbId = "ai-studio-pino-54d7811d-9389-49cf-a785-d6cd0a288db6";
 const db = getFirestore(app, firestoreDbId);
+const storage = getStorage(app);
 
-export { app, auth, db };
+export { app, auth, db, storage };
 
 export const ADMIN_EMAIL = 'lch200048@gmail.com';
 
@@ -246,217 +248,242 @@ const SEED_NOTICES: Omit<Notice, 'id'>[] = [
 export async function seedInitialDatabase() {
   try {
     // 1. Seed Products
-    const productsSnap = await getDocs(collection(db, 'products'));
-    if (productsSnap.empty) {
-      console.log('Seeding products to Firestore...');
-      for (const prod of SEED_PRODUCTS) {
-        await addDoc(collection(db, 'products'), prod);
-      }
-    } else {
-      // De-duplicate existing products with duplicate names
-      const seenNames = new Set<string>();
-      const productsToDelete: string[] = [];
-      productsSnap.forEach((docSnap) => {
-        const data = docSnap.data() as Product;
-        if (seenNames.has(data.name)) {
-          productsToDelete.push(docSnap.id);
-        } else {
-          seenNames.add(data.name);
+    try {
+      const productsSnap = await getDocs(collection(db, 'products'));
+      if (productsSnap.empty) {
+        console.log('Seeding products to Firestore...');
+        for (const prod of SEED_PRODUCTS) {
+          await addDoc(collection(db, 'products'), prod);
         }
-      });
-      if (productsToDelete.length > 0) {
-        console.log(`Deleting ${productsToDelete.length} duplicate products...`);
-        for (const docId of productsToDelete) {
-          await deleteDoc(doc(db, 'products', docId));
+      } else {
+        // De-duplicate existing products with duplicate names
+        const seenNames = new Set<string>();
+        const productsToDelete: string[] = [];
+        productsSnap.forEach((docSnap) => {
+          const data = docSnap.data() as Product;
+          if (seenNames.has(data.name)) {
+            productsToDelete.push(docSnap.id);
+          } else {
+            seenNames.add(data.name);
+          }
+        });
+        if (productsToDelete.length > 0) {
+          console.log(`Deleting ${productsToDelete.length} duplicate products...`);
+          for (const docId of productsToDelete) {
+            await deleteDoc(doc(db, 'products', docId));
+          }
         }
       }
+    } catch (err) {
+      console.warn('Error seeding products:', err);
     }
 
     // 2. Seed FAQs
-    const faqsSnap = await getDocs(collection(db, 'faqs'));
-    if (faqsSnap.empty) {
-      console.log('Seeding FAQs to Firestore...');
-      for (const faq of SEED_FAQS) {
-        await addDoc(collection(db, 'faqs'), faq);
-      }
-    } else {
-      // De-duplicate existing FAQs with duplicate questions
-      const seenQuestions = new Set<string>();
-      const faqsToDelete: string[] = [];
-      faqsSnap.forEach((docSnap) => {
-        const data = docSnap.data() as FAQ;
-        if (seenQuestions.has(data.question)) {
-          faqsToDelete.push(docSnap.id);
-        } else {
-          seenQuestions.add(data.question);
+    try {
+      const faqsSnap = await getDocs(collection(db, 'faqs'));
+      if (faqsSnap.empty) {
+        console.log('Seeding FAQs to Firestore...');
+        for (const faq of SEED_FAQS) {
+          await addDoc(collection(db, 'faqs'), faq);
         }
-      });
-      if (faqsToDelete.length > 0) {
-        console.log(`Deleting ${faqsToDelete.length} duplicate FAQs...`);
-        for (const docId of faqsToDelete) {
-          await deleteDoc(doc(db, 'faqs', docId));
+      } else {
+        // De-duplicate existing FAQs with duplicate questions
+        const seenQuestions = new Set<string>();
+        const faqsToDelete: string[] = [];
+        faqsSnap.forEach((docSnap) => {
+          const data = docSnap.data() as FAQ;
+          if (seenQuestions.has(data.question)) {
+            faqsToDelete.push(docSnap.id);
+          } else {
+            seenQuestions.add(data.question);
+          }
+        });
+        if (faqsToDelete.length > 0) {
+          console.log(`Deleting ${faqsToDelete.length} duplicate FAQs...`);
+          for (const docId of faqsToDelete) {
+            await deleteDoc(doc(db, 'faqs', docId));
+          }
         }
       }
+    } catch (err) {
+      console.warn('Error seeding FAQs:', err);
     }
 
     // 3. Seed Notices
-    const noticesSnap = await getDocs(collection(db, 'notices'));
-    if (noticesSnap.empty) {
-      console.log('Seeding Notices to Firestore...');
-      for (const notice of SEED_NOTICES) {
-        await addDoc(collection(db, 'notices'), notice);
-      }
-    } else {
-      // De-duplicate existing Notices with duplicate titles
-      const seenTitles = new Set<string>();
-      const noticesToDelete: string[] = [];
-      noticesSnap.forEach((docSnap) => {
-        const data = docSnap.data() as Notice;
-        if (seenTitles.has(data.title)) {
-          noticesToDelete.push(docSnap.id);
-        } else {
-          seenTitles.add(data.title);
+    try {
+      const noticesSnap = await getDocs(collection(db, 'notices'));
+      if (noticesSnap.empty) {
+        console.log('Seeding Notices to Firestore...');
+        for (const notice of SEED_NOTICES) {
+          await addDoc(collection(db, 'notices'), notice);
         }
-      });
-      if (noticesToDelete.length > 0) {
-        console.log(`Deleting ${noticesToDelete.length} duplicate Notices...`);
-        for (const docId of noticesToDelete) {
-          await deleteDoc(doc(db, 'notices', docId));
+      } else {
+        // De-duplicate existing Notices with duplicate titles
+        const seenTitles = new Set<string>();
+        const noticesToDelete: string[] = [];
+        noticesSnap.forEach((docSnap) => {
+          const data = docSnap.data() as Notice;
+          if (seenTitles.has(data.title)) {
+            noticesToDelete.push(docSnap.id);
+          } else {
+            seenTitles.add(data.title);
+          }
+        });
+        if (noticesToDelete.length > 0) {
+          console.log(`Deleting ${noticesToDelete.length} duplicate Notices...`);
+          for (const docId of noticesToDelete) {
+            await deleteDoc(doc(db, 'notices', docId));
+          }
         }
       }
+    } catch (err) {
+      console.warn('Error seeding Notices:', err);
     }
 
     // 4. Seed initial reviews for product 1
-    const reviewsSnap = await getDocs(collection(db, 'reviews'));
-    if (reviewsSnap.empty) {
-      const prods = await getDocs(collection(db, 'products'));
-      let bearId = 'p1';
-      prods.forEach(docSnap => {
-        if (docSnap.data().name.includes('아기곰')) {
-          bearId = docSnap.id;
-        }
-      });
+    try {
+      const reviewsSnap = await getDocs(collection(db, 'reviews'));
+      if (reviewsSnap.empty) {
+        const prods = await getDocs(collection(db, 'products'));
+        let bearId = 'p1';
+        prods.forEach(docSnap => {
+          if (docSnap.data().name.includes('아기곰')) {
+            bearId = docSnap.id;
+          }
+        });
 
-      const initialReviews: Omit<Review, 'id'>[] = [
-        {
-          productId: bearId,
-          productName: "🧸 베이지 펠트 아기곰 인형",
-          userId: "demo-user-id",
-          userName: "펠트사랑",
-          rating: 5,
-          content: "정말 너무너무 보들보들하고 튼튼해요! 공방 주인장님의 따스한 바느질 땀새가 고스란히 보여서 감동입니다. 선물 포장도 너무 이쁘게 와서 뜯기 아까웠어요 ㅠㅠ 번창하세요!",
-          imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=400&auto=format&fit=crop&q=80",
-          createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
-          isBest: true
-        },
-        {
-          productId: bearId,
-          productName: "🧸 베이지 펠트 아기곰 인형",
-          userId: "demo-user-id-2",
-          userName: "감성캠퍼",
-          rating: 5,
-          content: "캠핑 감성 선반 위에 올려놨는데 조명이랑 너무 잘 어울립니다. 세상 하나뿐인 따스함이란 말이 딱 맞네요.",
-          createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-          isBest: false
-        }
-      ];
+        const initialReviews: Omit<Review, 'id'>[] = [
+          {
+            productId: bearId,
+            productName: "🧸 베이지 펠트 아기곰 인형",
+            userId: "demo-user-id",
+            userName: "펠트사랑",
+            rating: 5,
+            content: "정말 너무너무 보들보들하고 튼튼해요! 공방 주인장님의 따스한 바느질 땀새가 고스란히 보여서 감동입니다. 선물 포장도 너무 이쁘게 와서 뜯기 아까웠어요 ㅠㅠ 번창하세요!",
+            imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=400&auto=format&fit=crop&q=80",
+            createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+            isBest: true
+          },
+          {
+            productId: bearId,
+            productName: "🧸 베이지 펠트 아기곰 인형",
+            userId: "demo-user-id-2",
+            userName: "감성캠퍼",
+            rating: 5,
+            content: "캠핑 감성 선반 위에 올려놨는데 조명이랑 너무 잘 어울립니다. 세상 하나뿐인 따스함이란 말이 딱 맞네요.",
+            createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
+            isBest: false
+          }
+        ];
 
-      for (const rev of initialReviews) {
-        await addDoc(collection(db, 'reviews'), rev);
+        for (const rev of initialReviews) {
+          await addDoc(collection(db, 'reviews'), rev);
+        }
       }
+    } catch (err) {
+      console.warn('Error seeding reviews:', err);
     }
 
     // 5. Seed Classes
-    const classesSnap = await getDocs(collection(db, 'classes'));
-    if (classesSnap.empty) {
-      console.log('Seeding Classes to Firestore...');
-      const SEED_CLASSES = [
-        {
-          title: "🎨 [무료] 한 땀 한 땀 포근한 펠트인형 만들기",
-          description: "포근하고 귀여운 양모 펠트를 사용하여 직접 동글동글 사랑스러운 펠트 인형을 손수 만들어보는 무료 클래스입니다. 초보자도 쉽게 따라 하실 수 있는 기초 바느질부터 꼼꼼히 가르쳐 드립니다.",
-          image: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=600&auto=format&fit=crop&q=80",
-          dates: ["2026-07-08", "2026-07-15", "2026-07-22", "2026-07-29"],
-          times: ["10:00", "13:00", "15:30"],
-          maxParticipants: 12,
-          createdAt: Date.now()
-        },
-        {
-          title: "🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기",
-          description: "몽글몽글한 천연 펠트 양모를 만지며 나만의 작은 아기곰 인형을 한 땀 한 땀 빚어보는 무료 입문 클래스입니다. 초보자도 쉽게 2시간 내외로 나만의 동반자 인형을 완성해볼 수 있어요.",
-          image: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
-          dates: ["2026-07-05", "2026-07-12", "2026-07-19", "2026-07-26"],
-          times: ["11:00", "14:00", "16:00"],
-          maxParticipants: 10,
-          createdAt: Date.now() - 12 * 60 * 60 * 1000
-        },
-        {
-          title: "🐰 [무료] 동글토끼 펠트 키링 제작 클래스",
-          description: "내 손으로 바느질해 만드는 귀여운 복슬복슬 토끼 키링 제작 클래스입니다. 실과 바늘을 잡아본 적 없어도, 세이지그린 숲 속 아늑한 분위기의 공방에서 누구나 정교한 가방 고리를 만들어 갑니다.",
-          image: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
-          dates: ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"],
-          times: ["13:00", "15:00"],
-          maxParticipants: 8,
-          createdAt: Date.now() - 24 * 60 * 60 * 1000
+    try {
+      const classesSnap = await getDocs(collection(db, 'classes'));
+      if (classesSnap.empty) {
+        console.log('Seeding Classes to Firestore...');
+        const SEED_CLASSES = [
+          {
+            title: "🎨 [무료] 한 땀 한 땀 포근한 펠트인형 만들기",
+            description: "포근하고 귀여운 양모 펠트를 사용하여 직접 동글동글 사랑스러운 펠트 인형을 손수 만들어보는 무료 클래스입니다. 초보자도 쉽게 따라 하실 수 있는 기초 바느질부터 꼼꼼히 가르쳐 드립니다.",
+            image: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=600&auto=format&fit=crop&q=80",
+            dates: ["2026-07-08", "2026-07-15", "2026-07-22", "2026-07-29"],
+            times: ["10:00", "13:00", "15:30"],
+            maxParticipants: 12,
+            createdAt: Date.now()
+          },
+          {
+            title: "🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기",
+            description: "몽글몽글한 천연 펠트 양모를 만지며 나만의 작은 아기곰 인형을 한 땀 한 땀 빚어보는 무료 입문 클래스입니다. 초보자도 쉽게 2시간 내외로 나만의 동반자 인형을 완성해볼 수 있어요.",
+            image: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+            dates: ["2026-07-05", "2026-07-12", "2026-07-19", "2026-07-26"],
+            times: ["11:00", "14:00", "16:00"],
+            maxParticipants: 10,
+            createdAt: Date.now() - 12 * 60 * 60 * 1000
+          },
+          {
+            title: "🐰 [무료] 동글토끼 펠트 키링 제작 클래스",
+            description: "내 손으로 바느질해 만드는 귀여운 복슬복슬 토끼 키링 제작 클래스입니다. 실과 바늘을 잡아본 적 없어도, 세이지그린 숲 속 아늑한 분위기의 공방에서 누구나 정교한 가방 고리를 만들어 갑니다.",
+            image: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
+            dates: ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"],
+            times: ["13:00", "15:00"],
+            maxParticipants: 8,
+            createdAt: Date.now() - 24 * 60 * 60 * 1000
+          }
+        ];
+        for (const cl of SEED_CLASSES) {
+          await addDoc(collection(db, 'classes'), cl);
         }
-      ];
-      for (const cl of SEED_CLASSES) {
-        await addDoc(collection(db, 'classes'), cl);
       }
+    } catch (err) {
+      console.warn('Error seeding classes:', err);
     }
 
     // 6. Seed Class Reviews
-    const classReviewsSnap = await getDocs(collection(db, 'class_reviews'));
-    if (classReviewsSnap.empty) {
-      console.log('Seeding Class Reviews to Firestore...');
-      const classesDocs = await getDocs(collection(db, 'classes'));
-      let bearClassId = 'c1';
-      let bearClassName = '🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기';
-      let keyringClassId = 'c2';
-      let keyringClassName = '🐰 [무료] 동글토끼 펠트 키링 제작 클래스';
+    try {
+      const classReviewsSnap = await getDocs(collection(db, 'class_reviews'));
+      if (classReviewsSnap.empty) {
+        console.log('Seeding Class Reviews to Firestore...');
+        const classesDocs = await getDocs(collection(db, 'classes'));
+        if (!classesDocs.empty) {
+          let bearClassId = 'c1';
+          let bearClassName = '🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기';
+          let keyringClassId = 'c2';
+          let keyringClassName = '🐰 [무료] 동글토끼 펠트 키링 제작 클래스';
 
-      classesDocs.forEach((docSnap) => {
-        const d = docSnap.data();
-        if (d.title.includes('아기 펠트인형')) {
-          bearClassId = docSnap.id;
-          bearClassName = d.title;
-        } else if (d.title.includes('키링')) {
-          keyringClassId = docSnap.id;
-          keyringClassName = d.title;
+          classesDocs.forEach((docSnap) => {
+            const d = docSnap.data();
+            if (d.title.includes('아기 펠트인형')) {
+              bearClassId = docSnap.id;
+              bearClassName = d.title;
+            } else if (d.title.includes('키링')) {
+              keyringClassId = docSnap.id;
+              keyringClassName = d.title;
+            }
+          });
+
+          const SEED_CLASS_REVIEWS = [
+            {
+              classId: bearClassId,
+              className: bearClassName,
+              userId: "demo-user-id",
+              userName: "토끼맘",
+              rating: 5,
+              content: "아이랑 같이 와서 들었는데 선생님이 정말 하나하나 한 땀 한 땀 친절하게 알려주셔서 귀여운 곰인형 완성했어요! 너무 즐거운 힐링 시간이었습니다.",
+              imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+              createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000
+            },
+            {
+              classId: keyringClassId,
+              className: keyringClassName,
+              userId: "demo-user-id-2",
+              userName: "바느질요정",
+              rating: 5,
+              content: "똥손이라 걱정했는데 공방 분위기도 너무 따뜻하고 포근하고, 친절하게 도와주셔서 세상 앙증맞은 토끼 키링 생겼어요! 다른 클래스도 열리면 꼭 또 오고 싶어요.",
+              imageUrl: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
+              createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000
+            }
+          ];
+
+          for (const cr of SEED_CLASS_REVIEWS) {
+            await addDoc(collection(db, 'class_reviews'), cr);
+          }
         }
-      });
-
-      const SEED_CLASS_REVIEWS = [
-        {
-          classId: bearClassId,
-          className: bearClassName,
-          userId: "demo-user-id",
-          userName: "토끼맘",
-          rating: 5,
-          content: "아이랑 같이 와서 들었는데 선생님이 정말 하나하나 한 땀 한 땀 친절하게 알려주셔서 귀여운 곰인형 완성했어요! 너무 즐거운 힐링 시간이었습니다.",
-          imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
-          createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000
-        },
-        {
-          classId: keyringClassId,
-          className: keyringClassName,
-          userId: "demo-user-id-2",
-          userName: "바느질요정",
-          rating: 5,
-          content: "똥손이라 걱정했는데 공방 분위기도 너무 따뜻하고 포근하고, 친절하게 도와주셔서 세상 앙증맞은 토끼 키링 생겼어요! 다른 클래스도 열리면 꼭 또 오고 싶어요.",
-          imageUrl: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
-          createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000
-        }
-      ];
-
-      for (const cr of SEED_CLASS_REVIEWS) {
-        await addDoc(collection(db, 'class_reviews'), cr);
       }
+    } catch (err) {
+      console.warn('Error seeding class reviews:', err);
     }
 
-    console.log('Database seeded successfully!');
+    console.log('Database seeding process completed.');
   } catch (error) {
     console.error('Error seeding database: ', error);
-    handleFirestoreError(error, OperationType.WRITE, 'products');
   }
 }
 
@@ -571,9 +598,28 @@ export async function updateProductDetails(id: string, data: Partial<Product>) {
 
 export async function removeProduct(id: string) {
   try {
-    await deleteDoc(doc(db, 'products', id));
+    const docRef = doc(db, 'products', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data() as Product;
+      if (data.images && data.images.length > 0) {
+        for (const imageUrl of data.images) {
+          if (imageUrl && (imageUrl.includes('firebasestorage.googleapis.com') || imageUrl.startsWith('gs://'))) {
+            try {
+              const storageRef = ref(storage, imageUrl);
+              await deleteObject(storageRef);
+              console.log('Successfully deleted product image from Firebase Storage:', imageUrl);
+            } catch (storageErr) {
+              console.warn('Could not delete image from Firebase Storage:', storageErr);
+            }
+          }
+        }
+      }
+    }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
+    throw error;
   }
 }
 

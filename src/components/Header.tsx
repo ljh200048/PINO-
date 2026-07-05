@@ -53,9 +53,12 @@ export default function Header({
     setError('');
     setSuccessMsg('');
 
+    const cleanEmail = email.trim();
+    const cleanPassword = password;
+
     try {
       if (authMode === 'login') {
-        const credential = await signInWithEmailAndPassword(auth, email, password);
+        const credential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         const profile = await getOrCreateUserProfile(credential.user);
         setUserProfile(profile);
         setSuccessMsg('로그인에 성공했습니다! 환영합니다.');
@@ -69,7 +72,7 @@ export default function Header({
           setError('닉네임을 입력해주세요.');
           return;
         }
-        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        const credential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         const profile = await getOrCreateUserProfile(credential.user, displayName);
         setUserProfile(profile);
         setSuccessMsg('회원가입이 완료되었습니다! 2,000P와 웰컴쿠폰이 지급되었습니다.');
@@ -86,7 +89,7 @@ export default function Header({
         setError('이미 등록된 이메일 주소입니다.');
       } else if (err.code === 'auth/weak-password') {
         setError('비밀번호는 최소 6자 이상이어야 합니다.');
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');
       } else {
         setError(err.message || '인증 오류가 발생했습니다.');
@@ -117,15 +120,17 @@ export default function Header({
       const demoEmail = role === 'admin' ? 'admin@pino.com' : 'demo-user@pino.com';
       const demoPass = 'pino1234!';
       
+      let credential;
       try {
-        const credential = await signInWithEmailAndPassword(auth, demoEmail, demoPass);
-        const profile = await getOrCreateUserProfile(credential.user);
+        // Try creating the user first to register it if it doesn't exist yet
+        credential = await createUserWithEmailAndPassword(auth, demoEmail, demoPass);
+        const profile = await getOrCreateUserProfile(credential.user, role === 'admin' ? '🧸 공방지기(관리자)' : '🐇 솜인형(체험)');
         setUserProfile(profile);
       } catch (err: any) {
-        // If account doesn't exist, register it first
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-          const credential = await createUserWithEmailAndPassword(auth, demoEmail, demoPass);
-          const profile = await getOrCreateUserProfile(credential.user, role === 'admin' ? '🧸 공방지기(관리자)' : '🐇 솜인형(체험)');
+        // If the email already exists, sign in directly!
+        if (err.code === 'auth/email-already-in-use') {
+          credential = await signInWithEmailAndPassword(auth, demoEmail, demoPass);
+          const profile = await getOrCreateUserProfile(credential.user);
           setUserProfile(profile);
         } else {
           throw err;
@@ -151,7 +156,8 @@ export default function Header({
   const navItems = [
     { id: 'shop', label: '온라인숍' },
     { id: 'custom-order', label: '1:1 주문제작' },
-    { id: 'event', label: '감성이벤트' },
+    { id: 'class-booking', label: '무료 클래스' },
+    { id: 'class-gallery', label: '클래스 갤러리' },
     { id: 'notice-faq', label: '소식 & FAQ' },
   ];
 

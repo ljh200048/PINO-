@@ -140,3 +140,46 @@ export interface EventLog {
   reward: string;
   createdAt: number;
 }
+
+export interface Class {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  dates: string[];
+  times: string[];
+  maxParticipants: number;
+  createdAt: number;
+}
+
+export interface ClassBooking {
+  id: string;
+  classId: string;
+  className: string;
+  userId: string | null;
+  userName: string;
+  phone: string;
+  email?: string;
+  date: string;
+  time: string;
+  participantsCount: number;
+  itemToMake: string;
+  request: string;
+  agreedToPrivacy: boolean;
+  status: 'pending' | 'approved' | 'cancelled';
+  attended: boolean;
+  memo: string;
+  createdAt: number;
+}
+
+export interface ClassReview {
+  id: string;
+  classId: string;
+  className: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  content: string;
+  imageUrl?: string;
+  createdAt: number;
+}

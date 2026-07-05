@@ -24,7 +24,7 @@ import {
   deleteDoc,
   writeBatch
 } from 'firebase/firestore';
-import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog } from '../types';
+import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview } from '../types';
 
 // Load values directly from the config
 const firebaseConfig = {
@@ -250,6 +250,24 @@ export async function seedInitialDatabase() {
       for (const prod of SEED_PRODUCTS) {
         await addDoc(collection(db, 'products'), prod);
       }
+    } else {
+      // De-duplicate existing products with duplicate names
+      const seenNames = new Set<string>();
+      const productsToDelete: string[] = [];
+      productsSnap.forEach((docSnap) => {
+        const data = docSnap.data() as Product;
+        if (seenNames.has(data.name)) {
+          productsToDelete.push(docSnap.id);
+        } else {
+          seenNames.add(data.name);
+        }
+      });
+      if (productsToDelete.length > 0) {
+        console.log(`Deleting ${productsToDelete.length} duplicate products...`);
+        for (const docId of productsToDelete) {
+          await deleteDoc(doc(db, 'products', docId));
+        }
+      }
     }
 
     // 2. Seed FAQs
@@ -259,6 +277,24 @@ export async function seedInitialDatabase() {
       for (const faq of SEED_FAQS) {
         await addDoc(collection(db, 'faqs'), faq);
       }
+    } else {
+      // De-duplicate existing FAQs with duplicate questions
+      const seenQuestions = new Set<string>();
+      const faqsToDelete: string[] = [];
+      faqsSnap.forEach((docSnap) => {
+        const data = docSnap.data() as FAQ;
+        if (seenQuestions.has(data.question)) {
+          faqsToDelete.push(docSnap.id);
+        } else {
+          seenQuestions.add(data.question);
+        }
+      });
+      if (faqsToDelete.length > 0) {
+        console.log(`Deleting ${faqsToDelete.length} duplicate FAQs...`);
+        for (const docId of faqsToDelete) {
+          await deleteDoc(doc(db, 'faqs', docId));
+        }
+      }
     }
 
     // 3. Seed Notices
@@ -267,6 +303,24 @@ export async function seedInitialDatabase() {
       console.log('Seeding Notices to Firestore...');
       for (const notice of SEED_NOTICES) {
         await addDoc(collection(db, 'notices'), notice);
+      }
+    } else {
+      // De-duplicate existing Notices with duplicate titles
+      const seenTitles = new Set<string>();
+      const noticesToDelete: string[] = [];
+      noticesSnap.forEach((docSnap) => {
+        const data = docSnap.data() as Notice;
+        if (seenTitles.has(data.title)) {
+          noticesToDelete.push(docSnap.id);
+        } else {
+          seenTitles.add(data.title);
+        }
+      });
+      if (noticesToDelete.length > 0) {
+        console.log(`Deleting ${noticesToDelete.length} duplicate Notices...`);
+        for (const docId of noticesToDelete) {
+          await deleteDoc(doc(db, 'notices', docId));
+        }
       }
     }
 
@@ -307,6 +361,93 @@ export async function seedInitialDatabase() {
 
       for (const rev of initialReviews) {
         await addDoc(collection(db, 'reviews'), rev);
+      }
+    }
+
+    // 5. Seed Classes
+    const classesSnap = await getDocs(collection(db, 'classes'));
+    if (classesSnap.empty) {
+      console.log('Seeding Classes to Firestore...');
+      const SEED_CLASSES = [
+        {
+          title: "🎨 [무료] 한 땀 한 땀 포근한 펠트인형 만들기",
+          description: "포근하고 귀여운 양모 펠트를 사용하여 직접 동글동글 사랑스러운 펠트 인형을 손수 만들어보는 무료 클래스입니다. 초보자도 쉽게 따라 하실 수 있는 기초 바느질부터 꼼꼼히 가르쳐 드립니다.",
+          image: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=600&auto=format&fit=crop&q=80",
+          dates: ["2026-07-08", "2026-07-15", "2026-07-22", "2026-07-29"],
+          times: ["10:00", "13:00", "15:30"],
+          maxParticipants: 12,
+          createdAt: Date.now()
+        },
+        {
+          title: "🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기",
+          description: "몽글몽글한 천연 펠트 양모를 만지며 나만의 작은 아기곰 인형을 한 땀 한 땀 빚어보는 무료 입문 클래스입니다. 초보자도 쉽게 2시간 내외로 나만의 동반자 인형을 완성해볼 수 있어요.",
+          image: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+          dates: ["2026-07-05", "2026-07-12", "2026-07-19", "2026-07-26"],
+          times: ["11:00", "14:00", "16:00"],
+          maxParticipants: 10,
+          createdAt: Date.now() - 12 * 60 * 60 * 1000
+        },
+        {
+          title: "🐰 [무료] 동글토끼 펠트 키링 제작 클래스",
+          description: "내 손으로 바느질해 만드는 귀여운 복슬복슬 토끼 키링 제작 클래스입니다. 실과 바늘을 잡아본 적 없어도, 세이지그린 숲 속 아늑한 분위기의 공방에서 누구나 정교한 가방 고리를 만들어 갑니다.",
+          image: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
+          dates: ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"],
+          times: ["13:00", "15:00"],
+          maxParticipants: 8,
+          createdAt: Date.now() - 24 * 60 * 60 * 1000
+        }
+      ];
+      for (const cl of SEED_CLASSES) {
+        await addDoc(collection(db, 'classes'), cl);
+      }
+    }
+
+    // 6. Seed Class Reviews
+    const classReviewsSnap = await getDocs(collection(db, 'class_reviews'));
+    if (classReviewsSnap.empty) {
+      console.log('Seeding Class Reviews to Firestore...');
+      const classesDocs = await getDocs(collection(db, 'classes'));
+      let bearClassId = 'c1';
+      let bearClassName = '🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기';
+      let keyringClassId = 'c2';
+      let keyringClassName = '🐰 [무료] 동글토끼 펠트 키링 제작 클래스';
+
+      classesDocs.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (d.title.includes('아기 펠트인형')) {
+          bearClassId = docSnap.id;
+          bearClassName = d.title;
+        } else if (d.title.includes('키링')) {
+          keyringClassId = docSnap.id;
+          keyringClassName = d.title;
+        }
+      });
+
+      const SEED_CLASS_REVIEWS = [
+        {
+          classId: bearClassId,
+          className: bearClassName,
+          userId: "demo-user-id",
+          userName: "토끼맘",
+          rating: 5,
+          content: "아이랑 같이 와서 들었는데 선생님이 정말 하나하나 한 땀 한 땀 친절하게 알려주셔서 귀여운 곰인형 완성했어요! 너무 즐거운 힐링 시간이었습니다.",
+          imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+          createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000
+        },
+        {
+          classId: keyringClassId,
+          className: keyringClassName,
+          userId: "demo-user-id-2",
+          userName: "바느질요정",
+          rating: 5,
+          content: "똥손이라 걱정했는데 공방 분위기도 너무 따뜻하고 포근하고, 친절하게 도와주셔서 세상 앙증맞은 토끼 키링 생겼어요! 다른 클래스도 열리면 꼭 또 오고 싶어요.",
+          imageUrl: "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80",
+          createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000
+        }
+      ];
+
+      for (const cr of SEED_CLASS_REVIEWS) {
+        await addDoc(collection(db, 'class_reviews'), cr);
       }
     }
 
@@ -586,4 +727,187 @@ export async function fetchEventLogs(): Promise<EventLog[]> {
     logs.push({ id: doc.id, ...doc.data() } as EventLog);
   });
   return logs.sort((a,b) => b.createdAt - a.createdAt);
+}
+
+// --- Classes & Booking Helpers ---
+
+export async function fetchClasses(): Promise<Class[]> {
+  try {
+    const snap = await getDocs(collection(db, 'classes'));
+    const classes: Class[] = [];
+    snap.forEach((doc) => {
+      classes.push({ id: doc.id, ...doc.data() } as Class);
+    });
+
+    // Ensure the "펠트인형 만들기" class exists dynamically
+    const hasFeltDollClass = classes.some(c => c.title.includes('펠트인형 만들기'));
+    if (!hasFeltDollClass) {
+      console.log('Felt doll making class is missing from Firestore. Auto-seeding...');
+      const newClassData = {
+        title: "🎨 [무료] 한 땀 한 땀 포근한 펠트인형 만들기",
+        description: "포근하고 귀여운 양모 펠트를 사용하여 직접 동글동글 사랑스러운 펠트 인형을 손수 만들어보는 무료 클래스입니다. 초보자도 쉽게 따라 하실 수 있는 기초 바느질부터 꼼꼼히 가르쳐 드립니다.",
+        image: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=600&auto=format&fit=crop&q=80",
+        dates: ["2026-07-08", "2026-07-15", "2026-07-22", "2026-07-29"],
+        times: ["10:00", "13:00", "15:30"],
+        maxParticipants: 12,
+        createdAt: Date.now()
+      };
+      const docRef = await addDoc(collection(db, 'classes'), newClassData);
+      classes.push({ id: docRef.id, ...newClassData } as Class);
+    }
+
+    return classes.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'classes');
+    return [];
+  }
+}
+
+export async function addClass(classData: Omit<Class, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, 'classes'), {
+      ...classData,
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'classes');
+    throw error;
+  }
+}
+
+export async function updateClass(id: string, updates: Partial<Class>) {
+  try {
+    await updateDoc(doc(db, 'classes', id), updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `classes/${id}`);
+    throw error;
+  }
+}
+
+export async function removeClass(id: string) {
+  try {
+    await deleteDoc(doc(db, 'classes', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `classes/${id}`);
+    throw error;
+  }
+}
+
+export async function fetchClassBookings(): Promise<ClassBooking[]> {
+  try {
+    const snap = await getDocs(collection(db, 'class_bookings'));
+    const bookings: ClassBooking[] = [];
+    snap.forEach((doc) => {
+      bookings.push({ id: doc.id, ...doc.data() } as ClassBooking);
+    });
+    return bookings.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'class_bookings');
+    return [];
+  }
+}
+
+export async function fetchUserClassBookings(userId: string): Promise<ClassBooking[]> {
+  try {
+    const snap = await getDocs(collection(db, 'class_bookings'));
+    const bookings: ClassBooking[] = [];
+    snap.forEach((doc) => {
+      const data = doc.data() as ClassBooking;
+      if (data.userId === userId) {
+        bookings.push({ id: doc.id, ...data });
+      }
+    });
+    return bookings.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'class_bookings');
+    return [];
+  }
+}
+
+export async function fetchNonMemberClassBookings(name: string, phone: string): Promise<ClassBooking[]> {
+  try {
+    const snap = await getDocs(collection(db, 'class_bookings'));
+    const bookings: ClassBooking[] = [];
+    snap.forEach((doc) => {
+      const data = doc.data() as ClassBooking;
+      if (data.userName === name && data.phone.replace(/[^0-9]/g, '') === phone.replace(/[^0-9]/g, '')) {
+        bookings.push({ id: doc.id, ...data });
+      }
+    });
+    return bookings.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'class_bookings');
+    return [];
+  }
+}
+
+export async function addClassBooking(booking: Omit<ClassBooking, 'id' | 'createdAt' | 'status' | 'attended' | 'memo'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, 'class_bookings'), {
+      ...booking,
+      status: 'pending',
+      attended: false,
+      memo: '',
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'class_bookings');
+    throw error;
+  }
+}
+
+export async function updateClassBookingStatus(id: string, status: ClassBooking['status']) {
+  try {
+    await updateDoc(doc(db, 'class_bookings', id), { status });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `class_bookings/${id}`);
+    throw error;
+  }
+}
+
+export async function updateClassBookingAttendance(id: string, attended: boolean) {
+  try {
+    await updateDoc(doc(db, 'class_bookings', id), { attended });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `class_bookings/${id}`);
+    throw error;
+  }
+}
+
+export async function updateClassBookingMemo(id: string, memo: string) {
+  try {
+    await updateDoc(doc(db, 'class_bookings', id), { memo });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `class_bookings/${id}`);
+    throw error;
+  }
+}
+
+export async function fetchClassReviews(): Promise<ClassReview[]> {
+  try {
+    const snap = await getDocs(collection(db, 'class_reviews'));
+    const reviews: ClassReview[] = [];
+    snap.forEach((doc) => {
+      reviews.push({ id: doc.id, ...doc.data() } as ClassReview);
+    });
+    return reviews.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'class_reviews');
+    return [];
+  }
+}
+
+export async function addClassReview(review: Omit<ClassReview, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, 'class_reviews'), {
+      ...review,
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'class_reviews');
+    throw error;
+  }
 }

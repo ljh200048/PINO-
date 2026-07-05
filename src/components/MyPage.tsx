@@ -4,9 +4,12 @@ import {
   fetchUserCustomOrders, 
   updateOrderStatus, 
   updateCustomOrderStatus, 
+  fetchUserClassBookings,
+  updateClassBookingStatus,
+  fetchClasses,
   db 
 } from '../lib/firebase';
-import { Order, CustomOrder, UserProfile } from '../types';
+import { Order, CustomOrder, UserProfile, ClassBooking, Class } from '../types';
 import { doc, updateDoc } from 'firebase/firestore';
 import { 
   Sparkles, 
@@ -42,7 +45,14 @@ export default function MyPage({
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
+  const [classBookings, setClassBookings] = useState<ClassBooking[]>([]);
+  const [allClasses, setAllClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Class booking edit states
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editTime, setEditTime] = useState<string>('');
 
   // Custom order payment modal
   const [payingCustomId, setPayingCustomId] = useState<string | null>(null);
@@ -59,12 +69,16 @@ export default function MyPage({
     async function loadUserData() {
       try {
         setLoading(true);
-        const [userOrd, userCust] = await Promise.all([
+        const [userOrd, userCust, userClassBks, fetchedClasses] = await Promise.all([
           fetchUserOrders(user.uid),
-          fetchUserCustomOrders(user.uid)
+          fetchUserCustomOrders(user.uid),
+          fetchUserClassBookings(user.uid),
+          fetchClasses()
         ]);
         setOrders(userOrd);
         setCustomOrders(userCust);
+        setClassBookings(userClassBks);
+        setAllClasses(fetchedClasses);
       } catch (err) {
         console.error(err);
       } finally {
@@ -119,6 +133,56 @@ export default function MyPage({
     } catch (err: any) {
       console.error(err);
       alert('주문제작 결제 처리 중 에러가 발생했습니다.');
+    }
+  };
+
+  const handleCancelClassBooking = async (bookingId: string) => {
+    if (!window.confirm('정말로 이 클래스 신청을 취소하시겠습니까?')) return;
+    try {
+      await updateClassBookingStatus(bookingId, 'cancelled');
+      setClassBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' as const } : b));
+      alert('클래스 신청이 취소되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('신청 취소 도중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleStartEditBooking = (booking: ClassBooking) => {
+    setEditingBookingId(booking.id);
+    setEditDate(booking.date);
+    setEditTime(booking.time);
+  };
+
+  const handleSaveEditedBooking = async (bookingId: string) => {
+    if (!editDate || !editTime) {
+      alert('날짜와 시간을 모두 선택해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const bookingRef = doc(db, 'class_bookings', bookingId);
+      await updateDoc(bookingRef, {
+        date: editDate,
+        time: editTime,
+        status: 'pending'
+      });
+
+      setClassBookings(prev => prev.map(b => b.id === bookingId ? { 
+        ...b, 
+        date: editDate, 
+        time: editTime, 
+        status: 'pending' as const 
+      } : b));
+
+      setEditingBookingId(null);
+      alert('예약이 성공적으로 변경되었습니다. 담당자 승인 대기 상태로 변경됩니다. 🧸');
+    } catch (err) {
+      console.error(err);
+      alert('예약 변경 도중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -377,6 +441,161 @@ export default function MyPage({
           )}
         </div>
 
+      </div>
+
+      {/* 3. Class Bookings Section */}
+      <div className="bg-white border border-[#E8D5C4]/60 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xs">
+        <h3 className="text-base font-extrabold text-[#4A3E3D] pb-2 border-b border-[#E8D5C4] flex items-center gap-2">
+          <Clock size={18} className="text-[#C79A4A]" />
+          <span>나의 무료 클래스 예약 신청 내역 ({classBookings.length}건)</span>
+        </h3>
+
+        {classBookings.length === 0 ? (
+          <div className="p-12 text-center bg-[#FFF8F1]/30 border border-dashed border-[#E8D5C4] rounded-2xl text-gray-400 text-xs">
+            신청하신 무료 클래스 내역이 존재하지 않습니다. 클래스 탭에서 다양한 소품 만들기 클래스에 참가해보세요! 🧸
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {classBookings.map((booking) => {
+              const bookingClassObj = allClasses.find(c => c.id === booking.classId);
+              const isEditing = editingBookingId === booking.id;
+
+              return (
+                <div key={booking.id} className="border border-[#E8D5C4]/60 rounded-2xl p-5 bg-[#FFF8F1]/10 flex flex-col justify-between gap-4 relative overflow-hidden shadow-2xs">
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <span className="text-[10px] bg-[#E8D5C4]/50 text-[#4A3E3D] px-2 py-0.5 rounded font-bold uppercase">
+                          {booking.itemToMake}
+                        </span>
+                        <h4 className="font-extrabold text-sm text-[#4A3E3D] leading-tight">
+                          {booking.className}
+                        </h4>
+                      </div>
+                      
+                      {/* Status badge */}
+                      <div>
+                        {booking.status === 'approved' && (
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full">✓ 예약확정</span>
+                        )}
+                        {booking.status === 'cancelled' && (
+                          <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2.5 py-1 rounded-full">✗ 신청취소</span>
+                        )}
+                        {booking.status === 'pending' && (
+                          <span className="bg-[#E8D5C4] text-[#4A3E3D] text-[10px] font-bold px-2.5 py-1 rounded-full">⌛ 승인대기</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-[#E8D5C4]/30 pt-2.5 text-xs text-gray-500 space-y-1.5">
+                      <p>👥 <b>참가자:</b> {booking.userName} ({booking.participantsCount}명)</p>
+                      
+                      {!isEditing ? (
+                        <>
+                          <p>📅 <b>예약일자:</b> {booking.date}</p>
+                          <p>⏰ <b>예약시간:</b> {booking.time}</p>
+                        </>
+                      ) : (
+                        <div className="bg-white p-3.5 border border-[#E8D5C4]/60 rounded-xl space-y-3 my-2">
+                          <p className="font-bold text-[10px] text-[#C79A4A]">📅 날짜/시간 변경하기</p>
+                          
+                          {/* Date selection inside edit form */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-gray-400 font-bold block">희망 날짜</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {bookingClassObj?.dates.map(d => (
+                                <button
+                                  type="button"
+                                  key={d}
+                                  onClick={() => setEditDate(d)}
+                                  className={`px-2.5 py-1 text-[11px] rounded-lg border font-bold transition-all cursor-pointer ${
+                                    editDate === d 
+                                      ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]' 
+                                      : 'bg-gray-50 text-gray-600 border-gray-200'
+                                  }`}
+                                >
+                                  {d}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Time selection inside edit form */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-gray-400 font-bold block">희망 시간</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {bookingClassObj?.times.map(t => (
+                                <button
+                                  type="button"
+                                  key={t}
+                                  onClick={() => setEditTime(t)}
+                                  className={`px-2.5 py-1 text-[11px] rounded-lg border font-bold transition-all cursor-pointer ${
+                                    editTime === t 
+                                      ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]' 
+                                      : 'bg-gray-50 text-gray-600 border-gray-200'
+                                  }`}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingBookingId(null)}
+                              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#4A3E3D] text-[10px] font-bold rounded-lg cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditedBooking(booking.id)}
+                              className="px-3 py-1.5 bg-[#4A3E3D] hover:bg-[#C79A4A] text-white text-[10px] font-bold rounded-lg cursor-pointer"
+                            >
+                              변경 저장
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {booking.request && (
+                        <p className="text-[11px] italic">💬 요청사항: &ldquo;{booking.request}&rdquo;</p>
+                      )}
+
+                      {booking.memo && (
+                        <div className="bg-[#E8D5C4]/20 p-2.5 rounded-lg border-l-2 border-[#C79A4A] text-[11px] text-[#4A3E3D]/80 mt-2">
+                          💬 <b>공방 지기 메모:</b> {booking.memo}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions for class booking */}
+                  {!isEditing && booking.status !== 'cancelled' && (
+                    <div className="pt-2.5 border-t border-[#E8D5C4]/30 flex justify-end gap-3 text-xs">
+                      <button
+                        onClick={() => handleStartEditBooking(booking)}
+                        className="text-[#C79A4A] hover:underline font-bold cursor-pointer"
+                      >
+                        일정 변경
+                      </button>
+                      <button
+                        onClick={() => handleCancelClassBooking(booking.id)}
+                        className="text-rose-500 hover:underline font-bold cursor-pointer"
+                      >
+                        예약 취소
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Pay Custom Estimate Modal */}

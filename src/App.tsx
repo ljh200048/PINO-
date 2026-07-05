@@ -17,11 +17,12 @@ import Footer from './components/Footer';
 import ProductGrid from './components/ProductGrid';
 import ProductDetail from './components/ProductDetail';
 import CustomOrderForm from './components/CustomOrderForm';
-import EventRoulette from './components/EventRoulette';
 import NoticeFAQ from './components/NoticeFAQ';
 import Cart from './components/Cart';
 import MyPage from './components/MyPage';
 import AdminPanel from './components/AdminPanel';
+import ClassBookingComponent from './components/ClassBooking';
+import ClassGalleryComponent from './components/ClassGallery';
 
 // Icons
 import { 
@@ -263,6 +264,42 @@ export default function App() {
                 </div>
               </section>
 
+              {/* FREE CLASS EVENT HERO RIBBON (Directly under Main Banner) */}
+              <section className="max-w-7xl mx-auto px-4">
+                <div className="bg-[#FFF8F1] border-2 border-[#E8D5C4] rounded-3xl p-8 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden shadow-xs">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-[#BFD8C0]/30 rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#F6D6D6]/40 rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="space-y-4 flex-1 z-10">
+                    <span className="text-[#4A3E3D] text-[11px] font-black uppercase tracking-wider bg-[#BFD8C0] px-3.5 py-1.5 rounded-full inline-block">
+                      🎁 비회원 신청 가능 · 참가비 0원
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-[#4A3E3D] font-sans leading-tight">
+                      따뜻한 PINO 공방 무료 펠트인형 클래스 🌸
+                    </h2>
+                    <p className="text-xs md:text-sm text-gray-500 max-w-2xl leading-relaxed font-medium">
+                      회원가입 번거로움 없이 이름과 휴대폰 번호만으로 간편 신청! 공방 마스터가 한 땀 한 땀 기초부터 알려드리는 포근한 펠트인형 만들기 힐링 일일 클래스에 여러분을 초대합니다.
+                    </p>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400 font-bold">
+                      <span>✓ 소요시간: 1시간</span>
+                      <span>✓ 준비물: 공방 전액 지원 (무료)</span>
+                      <span>✓ 대상: 초보자 환영 (비회원 가능)</span>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 z-10 w-full md:w-auto">
+                    <button
+                      onClick={() => setCurrentTab('class-booking')}
+                      className="w-full md:w-auto py-4 px-8 bg-[#4A3E3D] hover:bg-[#C79A4A] text-white font-extrabold text-sm rounded-2xl transition-all shadow-md active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                      id="home-class-booking-btn"
+                    >
+                      <span>무료 클래스 신청하기</span>
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               {/* Recommended Best-Sellers Grid */}
               <section className="max-w-7xl mx-auto px-4 space-y-6">
                 <div className="text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-3 border-b border-[#E8D5C4]/40 pb-4">
@@ -483,18 +520,37 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* TAB: Events roulette & Stamps */}
-          {currentTab === 'event' && (
+          {/* TAB: Class Booking */}
+          {currentTab === 'class-booking' && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              id="event-tab-view"
+              id="class-booking-tab-view"
             >
-              <EventRoulette
+              <ClassBookingComponent
                 user={user}
                 userProfile={userProfile}
-                setUserProfile={setUserProfile}
+                onLoginRequest={() => {
+                  const loginBtn = document.getElementById('header-login-btn');
+                  if (loginBtn) loginBtn.click();
+                }}
+                setCurrentTab={setCurrentTab}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB: Class Gallery */}
+          {currentTab === 'class-gallery' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              id="class-gallery-tab-view"
+            >
+              <ClassGalleryComponent
+                user={user}
+                userProfile={userProfile}
                 onLoginRequest={() => {
                   const loginBtn = document.getElementById('header-login-btn');
                   if (loginBtn) loginBtn.click();

@@ -37,37 +37,22 @@ service cloud.firestore {
 
     // --- products ---
     match /products/{productId} {
-      allow read: if true;
-      // Allow creation during seeding (which is done client-side when DB is empty) OR if they are an admin
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // --- faqs ---
     match /faqs/{faqId} {
-      allow read: if true;
-      allow create: if true; // Allow seeding
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // --- notices ---
     match /notices/{noticeId} {
-      allow read: if true;
-      allow create: if true; // Allow seeding
-      // Allow everyone to increment views (views update hasOnly['views']) or admin can modify any fields
-      allow update: if (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['views'])) ||
-        isAdmin()
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // --- reviews ---
     match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if true; // Allow seeding and user review creation
-      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
-      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow read, write: if true;
     }
 
     // --- users (UserProfile) ---
@@ -105,6 +90,24 @@ service cloud.firestore {
     match /event_logs/{eventLogId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- classes ---
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- class_bookings ---
+    match /class_bookings/{bookingId} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- class_reviews ---
+    match /class_reviews/{reviewId} {
+      allow read, create: if true;
       allow update, delete: if isAdmin();
     }
   }

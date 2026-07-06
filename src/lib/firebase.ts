@@ -966,3 +966,22 @@ export async function addClassReview(review: Omit<ClassReview, 'id' | 'createdAt
     throw error;
   }
 }
+
+export async function updateClassReview(id: string, updates: Partial<ClassReview>) {
+  try {
+    await updateDoc(doc(db, 'class_reviews', id), updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `class_reviews/${id}`);
+    throw error;
+  }
+}
+
+export async function removeClassReview(id: string) {
+  try {
+    await deleteDoc(doc(db, 'class_reviews', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `class_reviews/${id}`);
+    throw error;
+  }
+}
+

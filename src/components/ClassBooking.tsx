@@ -203,6 +203,20 @@ export default function ClassBookingComponent({
       };
 
       await addClassBooking(bookingData);
+
+      // Send a secure notification via our server-side API to Telegram
+      try {
+        await fetch('/api/notify-telegram', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bookingData)
+        });
+      } catch (tgErr) {
+        console.error('Telegram notification fetch failed:', tgErr);
+      }
+
       setBookingSuccess(true);
     } catch (err) {
       console.error(err);

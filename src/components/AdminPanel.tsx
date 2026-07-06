@@ -13,13 +13,17 @@ import {
   fetchClasses,
   addClass,
   removeClass,
+  updateClass,
   fetchClassBookings,
   updateClassBookingStatus,
   updateClassBookingAttendance,
   updateClassBookingMemo,
+  fetchClassReviews,
+  updateClassReview,
+  removeClassReview,
   db 
 } from '../lib/firebase';
-import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking } from '../types';
+import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking, ClassReview } from '../types';
 import { doc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { 
   ShieldAlert, 
@@ -38,7 +42,8 @@ import {
   Image,
   Link,
   Upload,
-  Edit
+  Edit,
+  Star
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -49,11 +54,19 @@ export default function AdminPanel() {
   const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings'>('stats');
+  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings' | 'reviews'>('stats');
 
   // Class & Booking lists
   const [classes, setClasses] = useState<Class[]>([]);
   const [classBookings, setClassBookings] = useState<ClassBooking[]>([]);
+  const [classReviews, setClassReviews] = useState<ClassReview[]>([]);
+
+  // Class Review edit states
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editReviewRating, setEditReviewRating] = useState(5);
+  const [editReviewContent, setEditReviewContent] = useState('');
+  const [editReviewSuccess, setEditReviewSuccess] = useState('');
+  const [editReviewError, setEditReviewError] = useState('');
 
   // Class register states
   const [newClassTitle, setNewClassTitle] = useState('');
@@ -88,6 +101,18 @@ export default function AdminPanel() {
   const [editProdSuccess, setEditProdSuccess] = useState('');
   const [editProdError, setEditProdError] = useState('');
   const [editProdImgMode, setEditProdImgMode] = useState<'preset' | 'url' | 'upload'>('url');
+
+  // Class edit states
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [editClassTitle, setEditClassTitle] = useState('');
+  const [editClassDescription, setEditClassDescription] = useState('');
+  const [editClassImage, setEditClassImage] = useState('');
+  const [editClassDates, setEditClassDates] = useState('');
+  const [editClassTimes, setEditClassTimes] = useState('');
+  const [editClassMaxParticipants, setEditClassMaxParticipants] = useState(10);
+  const [editClassSuccess, setEditClassSuccess] = useState('');
+  const [editClassError, setEditClassError] = useState('');
+  const [editClassImgMode, setEditClassImgMode] = useState<'preset' | 'url' | 'upload'>('url');
 
   // Image modes and file upload handlers
   const [prodImgMode, setProdImgMode] = useState<'preset' | 'url' | 'upload'>('preset');
@@ -171,6 +196,20 @@ export default function AdminPanel() {
     });
   };
 
+  const handleEditClassImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    compressAndSetImage(file, (compressedBase64) => {
+      setEditClassImage(compressedBase64);
+    });
+  };
+
   // Notice state
   const [newNoticeTitle, setNewNoticeTitle] = useState('');
   const [newNoticeContent, setNewNoticeContent] = useState('');
@@ -188,13 +227,14 @@ export default function AdminPanel() {
   const reloadAllData = async () => {
     try {
       setLoading(true);
-      const [p, o, c, l, cls, bks] = await Promise.all([
+      const [p, o, c, l, cls, bks, crs] = await Promise.all([
         fetchProducts(),
         fetchAllOrders(),
         fetchAllCustomOrders(),
         fetchEventLogs(),
         fetchClasses(),
-        fetchClassBookings()
+        fetchClassBookings(),
+        fetchClassReviews()
       ]);
       setProducts(p);
       setOrders(o);
@@ -202,6 +242,7 @@ export default function AdminPanel() {
       setEventLogs(l);
       setClasses(cls);
       setClassBookings(bks);
+      setClassReviews(crs);
     } catch (err) {
       console.error(err);
     } finally {
@@ -323,6 +364,56 @@ export default function AdminPanel() {
     }
   };
 
+  // Start Edit Class
+  const handleStartEditClass = (classObj: Class) => {
+    setEditingClassId(classObj.id);
+    setEditClassTitle(classObj.title);
+    setEditClassDescription(classObj.description);
+    setEditClassImage(classObj.image);
+    setEditClassDates(classObj.dates.join(', '));
+    setEditClassTimes(classObj.times.join(', '));
+    setEditClassMaxParticipants(classObj.maxParticipants);
+    setEditClassSuccess('');
+    setEditClassError('');
+    setEditClassImgMode('url');
+  };
+
+  // Submit Class Edit
+  const handleEditClassSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditClassSuccess('');
+    setEditClassError('');
+
+    if (!editingClassId) return;
+
+    if (!editClassTitle.trim() || !editClassDescription.trim() || !editClassImage.trim()) {
+      setEditClassError('모든 필드를 채워주세요!');
+      return;
+    }
+
+    try {
+      const datesArray = editClassDates.split(',').map(d => d.trim()).filter(Boolean);
+      const timesArray = editClassTimes.split(',').map(t => t.trim()).filter(Boolean);
+
+      await updateClass(editingClassId, {
+        title: editClassTitle,
+        description: editClassDescription,
+        image: editClassImage,
+        dates: datesArray,
+        times: timesArray,
+        maxParticipants: Number(editClassMaxParticipants)
+      });
+
+      setEditClassSuccess('🎉 클래스 정보가 성공적으로 수정되었습니다!');
+      reloadAllData();
+      alert('클래스 정보가 수정되었습니다.');
+      setEditingClassId(null);
+    } catch (err: any) {
+      console.error(err);
+      setEditClassError('클래스 수정 실패: ' + (err.message || err));
+    }
+  };
+
   const handleUpdateBookingStatus = async (bookingId: string, nextStatus: 'approved' | 'pending' | 'cancelled') => {
     try {
       await updateClassBookingStatus(bookingId, nextStatus);
@@ -353,6 +444,55 @@ export default function AdminPanel() {
     } catch (err) {
       console.error(err);
       alert('메모 저장 중 오류 발생');
+    }
+  };
+
+  // Class Review Edit Handlers
+  const handleStartEditReview = (review: ClassReview) => {
+    setEditingReviewId(review.id);
+    setEditReviewRating(review.rating);
+    setEditReviewContent(review.content);
+    setEditReviewSuccess('');
+    setEditReviewError('');
+  };
+
+  const handleEditReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditReviewSuccess('');
+    setEditReviewError('');
+
+    if (!editingReviewId) return;
+
+    if (!editReviewContent.trim()) {
+      setEditReviewError('후기 내용을 입력해주세요!');
+      return;
+    }
+
+    try {
+      await updateClassReview(editingReviewId, {
+        rating: Number(editReviewRating),
+        content: editReviewContent
+      });
+
+      setEditReviewSuccess('🎉 수강 후기가 성공적으로 수정되었습니다!');
+      reloadAllData();
+      alert('수강 후기가 수정되었습니다.');
+      setEditingReviewId(null);
+    } catch (err: any) {
+      console.error(err);
+      setEditReviewError('수강 후기 수정 실패: ' + (err.message || err));
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm('정말 이 수강 후기를 삭제하시겠습니까?')) return;
+    try {
+      await removeClassReview(reviewId);
+      reloadAllData();
+      alert('수강 후기가 삭제되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('수강 후기 삭제 중 오류 발생');
     }
   };
 
@@ -610,6 +750,15 @@ export default function AdminPanel() {
           }`}
         >
           클래스 예약자 관리 ({classBookings.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab('reviews')}
+          className={`pb-2.5 px-4 cursor-pointer border-b-2 transition-all ${
+            activeSubTab === 'reviews' ? 'border-[#C79A4A] text-[#C79A4A]' : 'border-transparent text-gray-500 hover:text-[#4A3E3D]'
+          }`}
+          id="admin-tab-reviews"
+        >
+          클래스 후기 관리 ({classReviews.length})
         </button>
       </div>
 
@@ -1425,194 +1574,399 @@ export default function AdminPanel() {
             {/* Class Registration Subtab */}
             {activeSubTab === 'classes' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="admin-subtab-classes">
-                {/* Left: Add Class form (5 cols) */}
-                <form onSubmit={handleAddClassSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-black text-[#4A3E3D] uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
-                    <Plus size={14} />
-                    <span>신규 무료 클래스 등록</span>
-                  </h4>
+                {/* Left: Add or Edit Class form (5 cols) */}
+                {editingClassId ? (
+                  <form onSubmit={handleEditClassSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-black text-indigo-700 uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
+                      <Edit size={14} />
+                      <span>클래스 정보 수정</span>
+                    </h4>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 주제명</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="🧸 꼬마 토끼 펠트 키링 무료 클래스"
-                      value={newClassTitle}
-                      onChange={(e) => setNewClassTitle(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 상세 설명</label>
-                    <textarea
-                      required
-                      rows={3}
-                      placeholder="초보자도 1시간 만에 손쉽게 귀여운 꼬마 토끼 키링을 완성해보실 수 있는 감성 공방 체험전입니다."
-                      value={newClassDescription}
-                      onChange={(e) => setNewClassDescription(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1">최대 정원 (명)</label>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 주제명</label>
                       <input
-                        type="number"
+                        type="text"
                         required
-                        value={newClassMaxParticipants}
-                        onChange={(e) => setNewClassMaxParticipants(Number(e.target.value))}
-                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        placeholder="🧸 클래스 주제명 입력"
+                        value={editClassTitle}
+                        onChange={(e) => setEditClassTitle(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[#4A3E3D]"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 대표 이미지</label>
-                    <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
-                      {/* Tab Buttons */}
-                      <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => { setClassImgMode('preset'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            classImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                        >
-                          <Image size={11} />
-                          <span>예시 사진 선택</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setClassImgMode('url'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            classImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                        >
-                          <Link size={11} />
-                          <span>직접 주소 입력</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setClassImgMode('upload'); }}
-                          className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            classImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                        >
-                          <Upload size={11} />
-                          <span>파일 업로드</span>
-                        </button>
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 상세 설명</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="상세 설명 입력"
+                        value={editClassDescription}
+                        onChange={(e) => setEditClassDescription(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[#4A3E3D]"
+                      />
+                    </div>
 
-                      {/* Content based on selected tab */}
-                      {classImgMode === 'preset' && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
-                            { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
-                            { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
-                          ].map((preset) => (
-                            <button
-                              key={preset.url}
-                              type="button"
-                              onClick={() => setNewClassImage(preset.url)}
-                              className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
-                                newClassImage === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
-                              }`}
-                            >
-                              <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
-                                {preset.name}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {classImgMode === 'url' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">최대 정원 (명)</label>
                         <input
-                          type="url"
-                          placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
-                          value={newClassImage}
-                          onChange={(e) => setNewClassImage(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          type="number"
+                          required
+                          value={editClassMaxParticipants}
+                          onChange={(e) => setEditClassMaxParticipants(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
                         />
-                      )}
+                      </div>
+                    </div>
 
-                      {classImgMode === 'upload' && (
-                        <div className="space-y-2">
-                          <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
-                            <Upload size={18} className="text-[#C79A4A]" />
-                            <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
-                            <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleClassImageUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Image Preview */}
-                      {newClassImage && (
-                        <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
-                          <img src={newClassImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
-                            실시간 미리보기
-                          </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 대표 이미지</label>
+                      <div className="bg-indigo-50/10 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                        {/* Tab Buttons */}
+                        <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
                           <button
                             type="button"
-                            onClick={() => setNewClassImage('')}
-                            className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            onClick={() => { setEditClassImgMode('preset'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editClassImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
                           >
-                            ✕
+                            <Image size={11} />
+                            <span>예시 사진 선택</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditClassImgMode('url'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editClassImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Link size={11} />
+                            <span>직접 주소 입력</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditClassImgMode('upload'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              editClassImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Upload size={11} />
+                            <span>파일 업로드</span>
                           </button>
                         </div>
-                      )}
+
+                        {/* Content based on selected tab */}
+                        {editClassImgMode === 'preset' && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                              { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                              { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setEditClassImage(preset.url)}
+                                className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                  editClassImage === preset.url ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-gray-200'
+                                }`}
+                              >
+                                <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                  {preset.name}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {editClassImgMode === 'url' && (
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                            value={editClassImage}
+                            onChange={(e) => setEditClassImage(e.target.value)}
+                            className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-indigo-500 text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          />
+                        )}
+
+                        {editClassImgMode === 'upload' && (
+                          <div className="space-y-2">
+                            <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                              <Upload size={18} className="text-indigo-600" />
+                              <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                              <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEditClassImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {/* Image Preview */}
+                        {editClassImage && (
+                          <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                            <img src={editClassImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                              실시간 미리보기
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditClassImage('')}
+                              className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 날짜 (쉼표 구분)</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="예: 2026-07-05, 2026-07-12, 2026-07-19"
-                      value={newClassDates}
-                      onChange={(e) => setNewClassDates(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 시간 (쉼표 구분)</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="예: 11:00, 14:00, 16:00"
-                      value={newClassTimes}
-                      onChange={(e) => setNewClassTimes(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
-                    />
-                  </div>
-
-                  {classSuccess && (
-                    <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
-                      {classSuccess}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 날짜 (쉼표 구분)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 2026-07-05, 2026-07-12, 2026-07-19"
+                        value={editClassDates}
+                        onChange={(e) => setEditClassDates(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[#4A3E3D]"
+                      />
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#4A3E3D] text-white font-bold text-xs rounded-xl hover:bg-[#C79A4A] transition-colors cursor-pointer"
-                  >
-                    무료 클래스 개설 완료 🌸
-                  </button>
-                </form>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 시간 (쉼표 구분)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 11:00, 14:00, 16:00"
+                        value={editClassTimes}
+                        onChange={(e) => setEditClassTimes(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    {editClassSuccess && (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
+                        {editClassSuccess}
+                      </div>
+                    )}
+
+                    {editClassError && (
+                      <div className="p-2 bg-red-50 border border-red-200 text-red-800 text-[11px] rounded font-semibold text-center">
+                        {editClassError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingClassId(null)}
+                        className="flex-1 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-colors cursor-pointer"
+                      >
+                        수정 취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        수정 완료
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleAddClassSubmit} className="lg:col-span-5 bg-white border border-[#E8D5C4] rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-black text-[#4A3E3D] uppercase border-b border-[#E8D5C4]/40 pb-2 flex items-center gap-1.5">
+                      <Plus size={14} />
+                      <span>신규 무료 클래스 등록</span>
+                    </h4>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 주제명</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="🧸 꼬마 토끼 펠트 키링 무료 클래스"
+                        value={newClassTitle}
+                        onChange={(e) => setNewClassTitle(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 상세 설명</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="초보자도 1시간 만에 손쉽게 귀여운 꼬마 토끼 키링을 완성해보실 수 있는 감성 공방 체험전입니다."
+                        value={newClassDescription}
+                        onChange={(e) => setNewClassDescription(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">최대 정원 (명)</label>
+                        <input
+                          type="number"
+                          required
+                          value={newClassMaxParticipants}
+                          onChange={(e) => setNewClassMaxParticipants(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none text-[#4A3E3D]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">클래스 대표 이미지</label>
+                      <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/60 rounded-xl p-3 space-y-3">
+                        {/* Tab Buttons */}
+                        <div className="flex gap-1.5 p-1 bg-gray-100 rounded-lg text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => { setClassImgMode('preset'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              classImgMode === 'preset' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Image size={11} />
+                            <span>예시 사진 선택</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setClassImgMode('url'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              classImgMode === 'url' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Link size={11} />
+                            <span>직접 주소 입력</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setClassImgMode('upload'); }}
+                            className={`flex-1 py-1.5 rounded-md font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              classImgMode === 'upload' ? 'bg-[#4A3E3D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            <Upload size={11} />
+                            <span>파일 업로드</span>
+                          </button>
+                        </div>
+
+                        {/* Content based on selected tab */}
+                        {classImgMode === 'preset' && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600' },
+                              { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
+                              { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setNewClassImage(preset.url)}
+                                className={`relative rounded-lg overflow-hidden aspect-video border cursor-pointer transition-all ${
+                                  newClassImage === preset.url ? 'border-[#C79A4A] ring-2 ring-[#C79A4A]/20' : 'border-gray-200'
+                                }`}
+                              >
+                                <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-x-0 bottom-0 bg-black/40 text-[9px] text-white font-bold text-center py-0.5 truncate">
+                                  {preset.name}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {classImgMode === 'url' && (
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/photo-... 또는 이미지 주소 붙여넣기"
+                            value={newClassImage}
+                            onChange={(e) => setNewClassImage(e.target.value)}
+                            className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:border-[#C79A4A] text-[#4A3E3D] bg-white placeholder-[#4A3E3D]/30"
+                          />
+                        )}
+
+                        {classImgMode === 'upload' && (
+                          <div className="space-y-2">
+                            <label className="border border-dashed border-[#E8D5C4] rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/80 transition-colors">
+                              <Upload size={18} className="text-[#C79A4A]" />
+                              <span className="text-[10px] font-bold text-[#4A3E3D]">이미지 파일 선택</span>
+                              <span className="text-[9px] text-gray-400">(JPG, PNG, WEBP 등 / 최대 10MB)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleClassImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {/* Image Preview */}
+                        {newClassImage && (
+                          <div className="relative rounded-xl overflow-hidden aspect-video border border-[#E8D5C4]/80 bg-gray-50 flex items-center justify-center max-h-36">
+                            <img src={newClassImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                              실시간 미리보기
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setNewClassImage('')}
+                              className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 날짜 (쉼표 구분)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 2026-07-05, 2026-07-12, 2026-07-19"
+                        value={newClassDates}
+                        onChange={(e) => setNewClassDates(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 mb-1">제공 희망 시간 (쉼표 구분)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 11:00, 14:00, 16:00"
+                        value={newClassTimes}
+                        onChange={(e) => setNewClassTimes(e.target.value)}
+                        className="w-full text-xs p-2.5 border border-[#E8D5C4] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C79A4A] text-[#4A3E3D]"
+                      />
+                    </div>
+
+                    {classSuccess && (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded font-semibold text-center">
+                        {classSuccess}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-[#4A3E3D] text-white font-bold text-xs rounded-xl hover:bg-[#C79A4A] transition-colors cursor-pointer"
+                    >
+                      무료 클래스 개설 완료 🌸
+                    </button>
+                  </form>
+                )}
 
                 {/* Right: Classes list (7 cols) */}
                 <div className="lg:col-span-7 space-y-4">
@@ -1637,12 +1991,28 @@ export default function AdminPanel() {
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteClass(cls.id)}
-                            className="p-2 text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl cursor-pointer"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleStartEditClass(cls)}
+                              className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                editingClassId === cls.id 
+                                  ? 'bg-indigo-600 text-white shadow-xs' 
+                                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80'
+                              }`}
+                              title="수정하기"
+                            >
+                              <Edit size={11} />
+                              <span>수정하기</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClass(cls.id)}
+                              className="px-2.5 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              title="제거"
+                            >
+                              <Trash2 size={11} />
+                              <span>제거</span>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1779,6 +2149,136 @@ export default function AdminPanel() {
                             </div>
                           )}
 
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Class Reviews Management Subtab */}
+            {activeSubTab === 'reviews' && (
+              <div className="space-y-5" id="admin-subtab-reviews">
+                <h3 className="text-sm font-extrabold text-[#4A3E3D] pb-1 border-b border-[#E8D5C4]/30">클래스 수강 후기 제어 및 수정 패널</h3>
+
+                {editReviewSuccess && (
+                  <p className="p-3.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200">{editReviewSuccess}</p>
+                )}
+                {editReviewError && (
+                  <p className="p-3.5 bg-rose-50 text-rose-800 text-xs font-bold rounded-xl border border-rose-200">{editReviewError}</p>
+                )}
+
+                {classReviews.length === 0 ? (
+                  <p className="text-xs text-center text-gray-400 py-12">등록된 수강 후기가 없습니다.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {classReviews.map((rev) => {
+                      const isEditing = editingReviewId === rev.id;
+
+                      return (
+                        <div key={rev.id} className="bg-white border border-[#E8D5C4]/50 p-5 rounded-2xl space-y-4 text-xs flex flex-col justify-between">
+                          <div className="space-y-3">
+                            {/* Image and Class Metadata */}
+                            <div className="flex gap-3 items-start">
+                              {rev.imageUrl && (
+                                <img
+                                  src={rev.imageUrl}
+                                  alt="Review item"
+                                  className="w-12 h-12 object-cover rounded-xl border border-[#E8D5C4]/30 shrink-0"
+                                  referrerPolicy="no-referrer"
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <span className="text-[9px] bg-[#E8D5C4]/30 text-[#C79A4A] border border-[#E8D5C4]/40 px-2 py-0.5 rounded font-bold uppercase block w-fit mb-1">
+                                  {rev.className}
+                                </span>
+                                <p className="font-extrabold text-[#4A3E3D] text-[11px]">작성자: {rev.userName} 님</p>
+                                <p className="text-gray-400 text-[10px]">{new Date(rev.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+
+                            {/* Editing Form or Regular Content */}
+                            {isEditing ? (
+                              <form onSubmit={handleEditReviewSubmit} className="space-y-3 pt-2 border-t border-[#E8D5C4]/20">
+                                <div>
+                                  <label className="text-[10px] font-bold text-gray-400 block mb-1">만족도 별점</label>
+                                  <div className="flex gap-1.5">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <button
+                                        type="button"
+                                        key={star}
+                                        onClick={() => setEditReviewRating(star)}
+                                        className={`p-1 rounded-md transition-colors cursor-pointer ${
+                                          editReviewRating >= star ? 'text-amber-400' : 'text-gray-300'
+                                        }`}
+                                      >
+                                        <Star size={16} fill={editReviewRating >= star ? "currentColor" : "none"} />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="text-[10px] font-bold text-gray-400 block mb-1">후기 내용</label>
+                                  <textarea
+                                    value={editReviewContent}
+                                    onChange={(e) => setEditReviewContent(e.target.value)}
+                                    rows={3}
+                                    className="w-full p-2.5 bg-white border border-[#E8D5C4] rounded-xl text-xs text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A] resize-none"
+                                    required
+                                  />
+                                </div>
+
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingReviewId(null)}
+                                    className="px-2.5 py-1 bg-gray-100 rounded text-[10px] font-bold text-gray-600 cursor-pointer"
+                                  >
+                                    취소
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className="px-2.5 py-1 bg-[#4A3E3D] text-white rounded text-[10px] font-bold cursor-pointer hover:bg-[#C79A4A]"
+                                  >
+                                    저장 완료
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="flex text-amber-400">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} size={11} fill={i < rev.rating ? "currentColor" : "none"} />
+                                  ))}
+                                </div>
+                                <p className="text-gray-600 leading-relaxed font-medium bg-[#FFF8F1]/40 p-2.5 rounded-xl border border-[#E8D5C4]/20">
+                                  {rev.content}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Non-editing action buttons */}
+                          {!isEditing && (
+                            <div className="pt-2 border-t border-[#E8D5C4]/30 flex justify-end gap-1.5 mt-2">
+                              <button
+                                onClick={() => handleStartEditReview(rev)}
+                                className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Edit size={11} />
+                                <span>수정하기</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteReview(rev.id)}
+                                className="px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 size={11} />
+                                <span>삭제하기</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -13,8 +13,19 @@ async function startServer() {
   // Body parser middleware
   app.use(express.json());
 
-  // API endpoint for sending Telegram notifications
-  app.post("/api/notify-telegram", async (req, res) => {
+  // CORS middleware to support strict browser privacy/incognito environments (e.g. inside iframes)
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+  // API endpoint for sending Telegram notifications (stealth alias to bypass strict privacy blockers/adblockers in Incognito mode)
+  const handleTelegramNotification = async (req: express.Request, res: express.Response) => {
     try {
       const {
         className,
@@ -90,7 +101,10 @@ async function startServer() {
         error: error instanceof Error ? error.message : "Internal Server Error",
       });
     }
-  });
+  };
+
+  app.post("/api/notify-telegram", handleTelegramNotification);
+  app.post("/api/dispatch-booking-alert", handleTelegramNotification);
 
   // Vite middleware setup in development, static hosting in production
   if (process.env.NODE_ENV !== "production") {

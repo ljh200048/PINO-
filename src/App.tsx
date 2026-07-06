@@ -10,6 +10,7 @@ import {
   addEventLog 
 } from './lib/firebase';
 import { Product, CartItem, UserProfile } from './types';
+import { safeStorage } from './lib/safeStorage';
 
 // Components
 import Header from './components/Header';
@@ -78,7 +79,7 @@ export default function App() {
   // Auth synchronization
   useEffect(() => {
     const syncLocalUser = () => {
-      const localUserJson = localStorage.getItem('pino_fallback_user');
+      const localUserJson = safeStorage.getItem('pino_fallback_user');
       if (localUserJson) {
         try {
           const parsed = JSON.parse(localUserJson);
@@ -108,23 +109,23 @@ export default function App() {
           const profile = await getOrCreateUserProfile(firebaseUser);
           setUserProfile(profile);
           // Sync wishlist from local state or load
-          localStorage.removeItem('pino_fallback_user');
+          safeStorage.removeItem('pino_fallback_user');
         } catch (err) {
           console.error('Error getting user profile:', err);
         }
       } else {
-        if (!localStorage.getItem('pino_fallback_user')) {
+        if (!safeStorage.getItem('pino_fallback_user')) {
           setUser(null);
           setUserProfile(null);
         }
       }
     });
 
-    // Load Cart and Wishlist from localStorage
-    const savedCart = localStorage.getItem('pino_cart');
+    // Load Cart and Wishlist from safeStorage
+    const savedCart = safeStorage.getItem('pino_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
 
-    const savedWish = localStorage.getItem('pino_wishlist');
+    const savedWish = safeStorage.getItem('pino_wishlist');
     if (savedWish) setWishlist(JSON.parse(savedWish));
 
     return () => {
@@ -133,10 +134,10 @@ export default function App() {
     };
   }, []);
 
-  // Save Cart to localStorage whenever modified
+  // Save Cart to safeStorage whenever modified
   const saveCart = (newCart: CartItem[]) => {
     setCart(newCart);
-    localStorage.setItem('pino_cart', JSON.stringify(newCart));
+    safeStorage.setItem('pino_cart', JSON.stringify(newCart));
   };
 
   // Cart Handlers
@@ -184,7 +185,7 @@ export default function App() {
       newWish.push(productId);
     }
     setWishlist(newWish);
-    localStorage.setItem('pino_wishlist', JSON.stringify(newWish));
+    safeStorage.setItem('pino_wishlist', JSON.stringify(newWish));
   };
 
   // Free Giveaway Event Entry

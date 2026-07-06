@@ -204,13 +204,16 @@ export default function ClassBookingComponent({
 
       await addClassBooking(bookingData);
 
-      // Send a secure notification via our server-side API to Telegram
+      // Send a secure notification via our server-side API (using the stealth alias to prevent adblockers in Incognito mode)
       try {
-        await fetch('/api/notify-telegram', {
+        const targetUrl = `${window.location.origin}/api/dispatch-booking-alert`;
+        await fetch(targetUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
+          mode: 'cors',
+          credentials: 'omit',
           body: JSON.stringify(bookingData)
         });
       } catch (tgErr) {

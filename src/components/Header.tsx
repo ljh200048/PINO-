@@ -20,6 +20,7 @@ import {
   GoogleAuthProvider 
 } from 'firebase/auth';
 import { UserProfile } from '../types';
+import { safeStorage } from '../lib/safeStorage';
 
 interface HeaderProps {
   currentTab: string;
@@ -82,7 +83,7 @@ export default function Header({
       createdAt: Date.now()
     };
     
-    localStorage.setItem('pino_fallback_user', JSON.stringify(mockProfile));
+    safeStorage.setItem('pino_fallback_user', JSON.stringify(mockProfile));
     window.dispatchEvent(new Event('local_auth_changed'));
   };
 
@@ -237,7 +238,7 @@ export default function Header({
     } catch (e) {
       console.error('SignOut error:', e);
     }
-    localStorage.removeItem('pino_fallback_user');
+    safeStorage.removeItem('pino_fallback_user');
     window.dispatchEvent(new Event('local_auth_changed'));
     setUserProfile(null);
     setCurrentTab('home');

@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto">
         
         {/* Core Sections */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-[#FFF8F1]/10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b border-[#FFF8F1]/10">
           
           {/* Col 1: Brand Info */}
           <div className="space-y-4">
@@ -35,7 +35,7 @@ export default function Footer() {
             <div className="space-y-2 text-xs">
               <p className="flex items-center gap-2">
                 <Phone size={14} className="text-[#BFD8C0]" />
-                <span className="font-bold text-sm">02-1234-1234</span>
+                <span className="font-bold text-sm">010-2955-0072</span>
               </p>
               <p className="text-[#FFF8F1]/70 leading-relaxed pl-6">
                 상담시간: AM 09:00 ~ PM 06:00<br />
@@ -44,7 +44,7 @@ export default function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={14} className="text-[#BFD8C0]" />
-                <span className="text-xs">support@pino-studio.com</span>
+                <span className="text-xs">wjdg7441@naver.com</span>
               </p>
             </div>
           </div>
@@ -54,27 +54,12 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-[#C79A4A] tracking-wider">무통장 입금 안내</h4>
             <div className="space-y-2 text-xs leading-relaxed text-[#FFF8F1]/80">
               <p className="bg-[#FFF8F1]/10 p-3 rounded-xl border border-[#FFF8F1]/5">
-                <span className="text-[10px] uppercase font-bold text-[#BFD8C0] block mb-0.5">국민은행 입금계좌</span>
-                <span className="font-bold text-sm text-white">0000-000-000000</span>
-                <span className="block mt-0.5 text-[#FFF8F1]/70">예금주: (주)PINO공방</span>
+                <span className="text-[10px] uppercase font-bold text-[#BFD8C0] block mb-0.5">농협은행 입금계좌</span>
+                <span className="font-bold text-sm text-white">352-1396-4182-13</span>
+                <span className="block mt-0.5 text-[#FFF8F1]/70">예금주: 장정현</span>
               </p>
               <p className="text-[11px] text-[#FFF8F1]/60">
                 ※ 주문 시 기재하신 <b>입금자명</b>과 실제 입금자명이 정확히 일치해야 자동 입금 확인 처리가 완료됩니다.
-              </p>
-            </div>
-          </div>
-
-          {/* Col 4: Physical Workshop Location */}
-          <div className="space-y-3.5">
-            <h4 className="text-sm font-semibold text-[#C79A4A] tracking-wider">제주 오프라인 공방</h4>
-            <div className="space-y-2 text-xs">
-              <p className="flex items-start gap-2 leading-relaxed">
-                <MapPin size={15} className="text-[#BFD8C0] shrink-0 mt-0.5" />
-                <span>제주특별자치도 서귀포시 감귤읍 감귤동산로 7456, 1층 PINO공방 쇼룸</span>
-              </p>
-              <p className="flex items-center gap-1.5 text-[11px] text-[#BFD8C0] pl-6">
-                <Compass size={13} />
-                <span>방문 예약 및 클래스 문의 필수</span>
               </p>
             </div>
           </div>
@@ -83,9 +68,9 @@ export default function Footer() {
         {/* Corporate Legal Declarations */}
         <div className="pt-8 text-xs text-[#FFF8F1]/50 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
           <div className="space-y-1.5 leading-relaxed">
-            <p className="font-medium text-[#FFF8F1]/70">상호명: (주)PINO공방 | 대표이사: 홍길동 | 개인정보관리책임자: 홍길동</p>
+            <p className="font-medium text-[#FFF8F1]/70">상호명: (주)PINO공방 | 대표이사: 장정현 | 개인정보관리책임자: 장정현</p>
             <p>사업자등록번호: 000-88-00002 | 통신판매업신고번호: 제 2026-제주불편-1355 호 [사업자정보확인]</p>
-            <p>주소: 제주특별자치도 서귀포시 감귤읍 감귤동산로 7456 | 대표 이메일: template@imweb.me | 호스팅 제공자: (주)아임웹</p>
+            <p>주소: 제주특별자치도 서귀포시 감귤읍 감귤동산로 7456 | 대표 이메일: wjdg7441@naver.com | 호스팅 제공자: (주)아임웹</p>
             <p className="text-[10px] text-[#FFF8F1]/40 mt-1">© 2026 PINO공방. All rights reserved. Crafted in premium felt & wool studio.</p>
           </div>
           

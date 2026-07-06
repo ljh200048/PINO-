@@ -619,7 +619,7 @@ export default function MyPage({
               <h4 className="text-base font-extrabold text-[#4A3E3D] mb-4 text-center">주문제작 입금 확인 접수</h4>
               
               <div className="bg-white border border-[#E8D5C4] p-3.5 rounded-2xl text-xs space-y-1.5 text-gray-600 font-medium mb-4">
-                <p>🏦 <b>입금 은행</b>: 국민은행 0000-000-000000 (주)PINO공방</p>
+                <p>🏦 <b>입금 은행</b>: 농협은행 352-1396-4182-13 (예금주: 장정현)</p>
                 <p>💰 <b>입금 금액</b>: <span className="text-[#C79A4A] font-bold text-sm">{payingCustomPrice.toLocaleString()}원</span></p>
               </div>
 

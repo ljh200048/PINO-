@@ -44,7 +44,7 @@ export default function Cart({
   const [selectedCouponId, setSelectedCouponId] = useState<string>('');
   const [usePoints, setUsePoints] = useState<number>(0);
   const [depositorName, setDepositorName] = useState('');
-  const [selectedBank, setSelectedBank] = useState('국민은행 (0000-000-000000 예금주: (주)PINO공방)');
+  const [selectedBank, setSelectedBank] = useState('농협은행 (352-1396-4182-13 예금주: 장정현)');
   
   const [receiverName, setReceiverName] = useState('');
   const [receiverPhone, setReceiverPhone] = useState('');
@@ -519,8 +519,7 @@ export default function Cart({
                     onChange={(e) => setSelectedBank(e.target.value)}
                     className="w-full text-[11px] bg-[#FFF8F1] border border-[#E8D5C4] p-2 rounded-xl text-[#4A3E3D] font-bold focus:outline-none cursor-pointer"
                   >
-                    <option value="국민은행 (0000-000-000000 예금주: (주)PINO공방)">국민은행 0000-000-000000</option>
-                    <option value="농협은행 (1111-222-333333 예금주: (주)PINO공방)">농협은행 1111-222-333333</option>
+                    <option value="농협은행 (352-1396-4182-13 예금주: 장정현)">농협은행 352-1396-4182-13 (예금주: 장정현)</option>
                   </select>
                 </div>
 

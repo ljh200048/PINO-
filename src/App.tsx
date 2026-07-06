@@ -7,7 +7,8 @@ import {
   getOrCreateUserProfile, 
   seedInitialDatabase, 
   fetchProducts, 
-  addEventLog 
+  addEventLog,
+  fetchStoreSettings
 } from './lib/firebase';
 import { Product, CartItem, UserProfile } from './types';
 import { safeStorage } from './lib/safeStorage';
@@ -49,6 +50,7 @@ export default function App() {
   // Catalog
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [homeImage, setHomeImage] = useState<string>("https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80");
 
   // Cart & Wishlist local/user storage sync
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,6 +69,12 @@ export default function App() {
         await seedInitialDatabase();
         const pList = await fetchProducts();
         setProducts(pList);
+        
+        // Fetch custom home settings dynamically
+        const storeSettings = await fetchStoreSettings();
+        if (storeSettings && storeSettings.homeImage) {
+          setHomeImage(storeSettings.homeImage);
+        }
       } catch (err) {
         console.error('Error during catalog initialization:', err);
       } finally {
@@ -287,7 +295,7 @@ export default function App() {
                     <div className="absolute inset-4 bg-[#C79A4A]/10 rounded-[40px] rotate-3 -z-10" />
                     <div className="absolute inset-4 bg-[#BFD8C0]/20 rounded-[40px] -rotate-3 -z-10" />
                     <img
-                      src="https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"
+                      src={homeImage}
                       alt="Handmade baby bear felt doll"
                       className="w-full h-full object-cover rounded-[36px] shadow-lg border border-[#E8D5C4]"
                       referrerPolicy="no-referrer"

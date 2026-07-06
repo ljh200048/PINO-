@@ -21,9 +21,11 @@ import {
   fetchClassReviews,
   updateClassReview,
   removeClassReview,
+  fetchStoreSettings,
+  updateStoreSettings,
   db 
 } from '../lib/firebase';
-import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking, ClassReview } from '../types';
+import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings } from '../types';
 import { doc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { 
   ShieldAlert, 
@@ -54,7 +56,7 @@ export default function AdminPanel() {
   const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings' | 'reviews'>('stats');
+  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings' | 'reviews' | 'settings'>('stats');
 
   // Class & Booking lists
   const [classes, setClasses] = useState<Class[]>([]);
@@ -224,17 +226,25 @@ export default function AdminPanel() {
   // Tracking numbers
   const [tempTrackingNum, setTempTrackingNum] = useState<{ [orderId: string]: string }>({});
 
+  // Store Settings state
+  const [adminHomeImage, setAdminHomeImage] = useState('https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600');
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState('');
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsImgMode, setSettingsImgMode] = useState<'preset' | 'url' | 'upload'>('url');
+
   const reloadAllData = async () => {
     try {
       setLoading(true);
-      const [p, o, c, l, cls, bks, crs] = await Promise.all([
+      const [p, o, c, l, cls, bks, crs, settings] = await Promise.all([
         fetchProducts(),
         fetchAllOrders(),
         fetchAllCustomOrders(),
         fetchEventLogs(),
         fetchClasses(),
         fetchClassBookings(),
-        fetchClassReviews()
+        fetchClassReviews(),
+        fetchStoreSettings()
       ]);
       setProducts(p);
       setOrders(o);
@@ -243,10 +253,52 @@ export default function AdminPanel() {
       setClasses(cls);
       setClassBookings(bks);
       setClassReviews(crs);
+      if (settings && settings.homeImage) {
+        setAdminHomeImage(settings.homeImage);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleHomeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    compressAndSetImage(file, (compressedBase64) => {
+      setAdminHomeImage(compressedBase64);
+    });
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsSuccess('');
+    setSettingsError('');
+    setSettingsLoading(true);
+
+    if (!adminHomeImage.trim()) {
+      setSettingsError('홈 화면 이미지 URL을 입력하거나 이미지를 업로드해주세요!');
+      setSettingsLoading(false);
+      return;
+    }
+
+    try {
+      await updateStoreSettings({ homeImage: adminHomeImage.trim() });
+      setSettingsSuccess('🎉 홈 화면 이미지가 성공적으로 변경되었습니다!');
+      alert('홈 설정이 성공적으로 저장되었습니다.');
+      reloadAllData();
+    } catch (err: any) {
+      console.error(err);
+      setSettingsError('설정 저장 실패: ' + (err.message || err));
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -759,6 +811,15 @@ export default function AdminPanel() {
           id="admin-tab-reviews"
         >
           클래스 후기 관리 ({classReviews.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab('settings')}
+          className={`pb-2.5 px-4 cursor-pointer border-b-2 transition-all ${
+            activeSubTab === 'settings' ? 'border-[#C79A4A] text-[#C79A4A]' : 'border-transparent text-gray-500 hover:text-[#4A3E3D]'
+          }`}
+          id="admin-tab-settings"
+        >
+          공방 홈 화면 관리
         </button>
       </div>
 
@@ -2284,6 +2345,171 @@ export default function AdminPanel() {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeSubTab === 'settings' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#4A3E3D] uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <Settings size={16} className="text-[#C79A4A]" />
+                    <span>공방 홈 화면 관리</span>
+                  </h3>
+                  <p className="text-gray-400 text-[11px] leading-relaxed">
+                    공방의 대문 역할을 하는 메인 홈 화면의 히어로 이미지를 변경할 수 있습니다.
+                    원하는 고품질 Unsplash URL을 입력하거나, PC의 이미지 파일을 업로드해보세요.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveSettings} className="bg-white border border-[#E8D5C4]/50 p-6 rounded-2xl space-y-6">
+                  {settingsSuccess && (
+                    <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
+                      {settingsSuccess}
+                    </div>
+                  )}
+                  {settingsError && (
+                    <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl">
+                      {settingsError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Image Settings */}
+                    <div className="lg:col-span-7 space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-[#4A3E3D] block mb-2">이미지 입력 방식 선택</label>
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-[#E8D5C4]/30">
+                          {(['preset', 'url', 'upload'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setSettingsImgMode(mode)}
+                              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                settingsImgMode === mode
+                                  ? 'bg-[#4A3E3D] text-white shadow-sm'
+                                  : 'text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              {mode === 'preset' ? '포근한 추천 프리셋' : mode === 'url' ? '직접 URL 입력' : '내 컴퓨터 업로드'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Presets */}
+                      {settingsImgMode === 'preset' && (
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-500 block">원하는 느낌의 공방 이미지를 선택하세요:</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              {
+                                url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600',
+                                name: '고양이 인형과 포근함 (기본)'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600',
+                                name: '오밀조밀 테디베어'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1534224039826-c7a0eda0e6b3?w=600',
+                                name: '핸드메이드 감성 뜨개'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600',
+                                name: '오가닉 아기 토끼'
+                              }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setAdminHomeImage(preset.url)}
+                                className={`p-2 border rounded-xl text-left transition-all hover:bg-[#FFF8F1]/40 cursor-pointer ${
+                                  adminHomeImage.startsWith(preset.url)
+                                    ? 'border-[#C79A4A] bg-[#FFF8F1]'
+                                    : 'border-gray-200'
+                                }`}
+                              >
+                                <img
+                                  src={preset.url}
+                                  alt={preset.name}
+                                  className="w-full h-20 object-cover rounded-lg mb-1"
+                                />
+                                <span className="text-[9px] font-bold text-gray-600 block truncate">{preset.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* URL input */}
+                      {settingsImgMode === 'url' && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-gray-500 block">이미지 웹 URL 주소</label>
+                          <input
+                            type="text"
+                            value={adminHomeImage}
+                            onChange={(e) => setAdminHomeImage(e.target.value)}
+                            placeholder="https://images.unsplash.com/... 주소 입력"
+                            className="w-full p-2.5 bg-gray-50 border border-[#E8D5C4] rounded-xl text-xs text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Local Upload */}
+                      {settingsImgMode === 'upload' && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-gray-500 block">파일 업로드</label>
+                          <div className="border-2 border-dashed border-[#E8D5C4] rounded-2xl p-4 text-center hover:bg-gray-50/50 transition-all cursor-pointer relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleHomeImageUpload}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                            <div className="space-y-1">
+                              <Upload className="mx-auto text-[#C79A4A]" size={20} />
+                              <p className="text-[10px] font-bold text-gray-500">클릭하여 이미지 파일을 올리거나 드래그앤드롭</p>
+                              <p className="text-[9px] text-gray-400">JPEG, PNG 최대 10MB</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Preview box */}
+                    <div className="lg:col-span-5 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-[#4A3E3D] block">홈화면 대문 실시간 미리보기</span>
+                        <div className="border border-[#E8D5C4] rounded-2xl overflow-hidden aspect-video relative bg-gray-100 flex items-center justify-center">
+                          {adminHomeImage ? (
+                            <img
+                              src={adminHomeImage}
+                              alt="홈 대문 미리보기"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-gray-400">이미지가 선택되지 않았습니다</span>
+                          )}
+                          <div className="absolute inset-0 bg-black/25 flex flex-col justify-end p-3 text-white">
+                            <span className="text-[9px] font-bold tracking-widest text-[#E8D5C4] uppercase">PINO HANDMADE HANDCRAFT</span>
+                            <span className="text-xs font-extrabold truncate">한 땀, 한 땀 온기를 가득 담은 손바느질</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 lg:pt-0">
+                        <button
+                          type="submit"
+                          disabled={settingsLoading}
+                          className="w-full py-3 bg-[#4A3E3D] text-white hover:bg-[#C79A4A] transition-colors rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                        >
+                          {settingsLoading ? '설정 저장 중...' : '공방 대문 이미지 적용하기'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
               </div>
             )}
           </>

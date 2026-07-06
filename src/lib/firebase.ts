@@ -25,7 +25,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { getStorage, ref, deleteObject } from 'firebase/storage';
-import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview } from '../types';
+import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings } from '../types';
 
 // Load values directly from the config
 const firebaseConfig = {
@@ -981,6 +981,37 @@ export async function removeClassReview(id: string) {
     await deleteDoc(doc(db, 'class_reviews', id));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `class_reviews/${id}`);
+    throw error;
+  }
+}
+
+export async function fetchStoreSettings(): Promise<StoreSettings> {
+  try {
+    const docRef = doc(db, 'settings', 'home');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as StoreSettings;
+    } else {
+      const defaultSettings: StoreSettings = {
+        homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"
+      };
+      await setDoc(docRef, defaultSettings);
+      return defaultSettings;
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'settings/home');
+    return {
+      homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"
+    };
+  }
+}
+
+export async function updateStoreSettings(settings: Partial<StoreSettings>) {
+  try {
+    const docRef = doc(db, 'settings', 'home');
+    await setDoc(docRef, settings, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, 'settings/home');
     throw error;
   }
 }

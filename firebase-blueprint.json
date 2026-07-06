@@ -136,6 +136,15 @@
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "userEmail", "eventType", "reward", "createdAt"]
+    },
+    "StoreSettings": {
+      "title": "StoreSettings",
+      "description": "General settings for the storefront",
+      "type": "object",
+      "properties": {
+        "homeImage": { "type": "string", "description": "URL of the primary hero home image" }
+      },
+      "required": ["homeImage"]
     }
   },
   "firestore": {
@@ -146,6 +155,7 @@
     "users": { "schema": "UserProfile", "description": "User profiles, roles, and statistics" },
     "orders": { "schema": "Order", "description": "Standard shopping purchase records" },
     "custom_orders": { "schema": "CustomOrder", "description": "Custom orders submitted by users" },
-    "event_logs": { "schema": "EventLog", "description": "History of events played by users" }
+    "event_logs": { "schema": "EventLog", "description": "History of events played by users" },
+    "settings": { "schema": "StoreSettings", "description": "General application/storefront configurations" }
   }
 }

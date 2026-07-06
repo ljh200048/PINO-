@@ -183,3 +183,8 @@ export interface ClassReview {
   imageUrl?: string;
   createdAt: number;
 }
+
+export interface StoreSettings {
+  homeImage: string;
+}
+

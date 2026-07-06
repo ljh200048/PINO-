@@ -71,7 +71,7 @@ export default function AdminPanel() {
   // Class register states
   const [newClassTitle, setNewClassTitle] = useState('');
   const [newClassDescription, setNewClassDescription] = useState('');
-  const [newClassImage, setNewClassImage] = useState('https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600');
+  const [newClassImage, setNewClassImage] = useState('https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600');
   const [newClassDates, setNewClassDates] = useState('2026-07-05, 2026-07-12, 2026-07-19');
   const [newClassTimes, setNewClassTimes] = useState('11:00, 14:00, 16:00');
   const [newClassMaxParticipants, setNewClassMaxParticipants] = useState(10);
@@ -86,7 +86,7 @@ export default function AdminPanel() {
   const [newProdCat, setNewProdCat] = useState<Product['category']>('felt-doll');
   const [newProdPrice, setNewProdPrice] = useState(20000);
   const [newProdDesc, setNewProdDesc] = useState('');
-  const [newProdImg, setNewProdImg] = useState('https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600');
+  const [newProdImg, setNewProdImg] = useState('https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600');
   const [newProdStock, setNewProdStock] = useState(15);
   const [newProdSuccess, setNewProdSuccess] = useState('');
 
@@ -278,7 +278,7 @@ export default function AdminPanel() {
       });
 
       setNewProdName('');
-      setNewProdImg('https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600');
+      setNewProdImg('https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600');
       setNewProdDesc('');
       setNewProdStock(15);
       setNewProdPrice(20000);
@@ -936,7 +936,7 @@ export default function AdminPanel() {
                         {editProdImgMode === 'preset' && (
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600' },
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600' },
                               { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
                               { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
                             ].map((preset) => (
@@ -1141,7 +1141,7 @@ export default function AdminPanel() {
                         {prodImgMode === 'preset' && (
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600' },
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600' },
                               { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
                               { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
                             ].map((preset) => (
@@ -1660,7 +1660,7 @@ export default function AdminPanel() {
                         {editClassImgMode === 'preset' && (
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600' },
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600' },
                               { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
                               { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
                             ].map((preset) => (
@@ -1863,7 +1863,7 @@ export default function AdminPanel() {
                         {classImgMode === 'preset' && (
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600' },
+                              { name: '아기곰 브라운', url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600' },
                               { name: '토끼 핑크', url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600' },
                               { name: '오리 피규어', url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600' }
                             ].map((preset) => (

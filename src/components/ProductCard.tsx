@@ -53,7 +53,7 @@ export default function ProductCard({
 
         {/* Product image */}
         <img 
-          src={product.images[0] || "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80"} 
+          src={product.images[0] || "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"} 
           alt={product.name} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           referrerPolicy="no-referrer"

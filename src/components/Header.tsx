@@ -561,39 +561,12 @@ export default function Header({
                 </button>
               </form>
 
-              {/* Divider */}
-              <div className="my-5 flex items-center justify-between text-xs text-[#4A3E3D]/50">
-                <span className="h-px bg-[#E8D5C4] flex-1" />
-                <span className="px-3 font-medium">안전하고 빠른 체험하기</span>
-                <span className="h-px bg-[#E8D5C4] flex-1" />
-              </div>
-
-              {/* Social / Demo Actions */}
+              {/* Social / Google Login */}
               <div className="space-y-2">
-                {/* 1-Click Demo Logins */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('user')}
-                    className="py-2.5 border border-[#BFD8C0] bg-[#BFD8C0]/10 hover:bg-[#BFD8C0]/25 rounded-2xl text-xs font-semibold text-[#4A3E3D] transition-colors cursor-pointer"
-                    id="demo-user-login-btn"
-                  >
-                    🧸 1초 일반회원 체험
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('admin')}
-                    className="py-2.5 border border-[#C79A4A] bg-[#E8D5C4]/20 hover:bg-[#E8D5C4]/45 rounded-2xl text-xs font-bold text-[#C79A4A] transition-colors cursor-pointer"
-                    id="demo-admin-login-btn"
-                  >
-                    👑 1초 공방지기 체험
-                  </button>
-                </div>
-
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full py-2.5 border border-[#E8D5C4] bg-white hover:bg-neutral-50 rounded-2xl text-xs font-semibold text-[#4A3E3D] flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="w-full py-3 border border-[#E8D5C4] bg-white hover:bg-neutral-50 rounded-2xl text-xs font-semibold text-[#4A3E3D] flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 14.98 1 12 1 7.35 1 3.4 3.65 1.53 7.55l3.8 2.95c.9-2.7 3.4-4.46 6.67-4.46z"/>

@@ -51,6 +51,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [homeImage, setHomeImage] = useState<string>("https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80");
+  const [customPromoImage, setCustomPromoImage] = useState<string>("https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80");
 
   // Cart & Wishlist local/user storage sync
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -72,8 +73,13 @@ export default function App() {
         
         // Fetch custom home settings dynamically
         const storeSettings = await fetchStoreSettings();
-        if (storeSettings && storeSettings.homeImage) {
-          setHomeImage(storeSettings.homeImage);
+        if (storeSettings) {
+          if (storeSettings.homeImage) {
+            setHomeImage(storeSettings.homeImage);
+          }
+          if (storeSettings.customPromoImage) {
+            setCustomPromoImage(storeSettings.customPromoImage);
+          }
         }
       } catch (err) {
         console.error('Error during catalog initialization:', err);
@@ -444,7 +450,7 @@ export default function App() {
 
                   <div className="aspect-video w-full rounded-2xl overflow-hidden border border-[#E8D5C4]/50 shadow-sm bg-white">
                     <img
-                      src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80"
+                      src={customPromoImage}
                       alt="Puppy reference preview for felt"
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"

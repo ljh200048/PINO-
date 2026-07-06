@@ -228,10 +228,12 @@ export default function AdminPanel() {
 
   // Store Settings state
   const [adminHomeImage, setAdminHomeImage] = useState('https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600');
+  const [adminCustomPromoImage, setAdminCustomPromoImage] = useState('https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600');
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [settingsImgMode, setSettingsImgMode] = useState<'preset' | 'url' | 'upload'>('url');
+  const [settingsPromoImgMode, setSettingsPromoImgMode] = useState<'preset' | 'url' | 'upload'>('url');
 
   const reloadAllData = async () => {
     try {
@@ -253,8 +255,13 @@ export default function AdminPanel() {
       setClasses(cls);
       setClassBookings(bks);
       setClassReviews(crs);
-      if (settings && settings.homeImage) {
-        setAdminHomeImage(settings.homeImage);
+      if (settings) {
+        if (settings.homeImage) {
+          setAdminHomeImage(settings.homeImage);
+        }
+        if (settings.customPromoImage) {
+          setAdminCustomPromoImage(settings.customPromoImage);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -277,6 +284,20 @@ export default function AdminPanel() {
     });
   };
 
+  const handleCustomPromoImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    compressAndSetImage(file, (compressedBase64) => {
+      setAdminCustomPromoImage(compressedBase64);
+    });
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsSuccess('');
@@ -289,10 +310,19 @@ export default function AdminPanel() {
       return;
     }
 
+    if (!adminCustomPromoImage.trim()) {
+      setSettingsError('반려동물 1:1 의뢰 배너 이미지 URL을 입력하거나 이미지를 업로드해주세요!');
+      setSettingsLoading(false);
+      return;
+    }
+
     try {
-      await updateStoreSettings({ homeImage: adminHomeImage.trim() });
-      setSettingsSuccess('🎉 홈 화면 이미지가 성공적으로 변경되었습니다!');
-      alert('홈 설정이 성공적으로 저장되었습니다.');
+      await updateStoreSettings({ 
+        homeImage: adminHomeImage.trim(),
+        customPromoImage: adminCustomPromoImage.trim()
+      });
+      setSettingsSuccess('🎉 설정이 성공적으로 저장되었습니다!');
+      alert('공방 설정이 성공적으로 저장되었습니다.');
       reloadAllData();
     } catch (err: any) {
       console.error(err);
@@ -2354,15 +2384,15 @@ export default function AdminPanel() {
                 <div>
                   <h3 className="text-sm font-extrabold text-[#4A3E3D] uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                     <Settings size={16} className="text-[#C79A4A]" />
-                    <span>공방 홈 화면 관리</span>
+                    <span>공방 이미지 및 대문 관리</span>
                   </h3>
                   <p className="text-gray-400 text-[11px] leading-relaxed">
-                    공방의 대문 역할을 하는 메인 홈 화면의 히어로 이미지를 변경할 수 있습니다.
-                    원하는 고품질 Unsplash URL을 입력하거나, PC의 이미지 파일을 업로드해보세요.
+                    공방의 대문 메인 히어로 이미지와 반려동물 1:1 맞춤 제작 홍보 배너의 이미지를 직접 변경할 수 있습니다.
+                    추천 프리셋을 선택하거나 웹 URL 입력, 또는 직접 이미지 파일을 컴퓨터에서 업로드할 수 있습니다.
                   </p>
                 </div>
 
-                <form onSubmit={handleSaveSettings} className="bg-white border border-[#E8D5C4]/50 p-6 rounded-2xl space-y-6">
+                <form onSubmit={handleSaveSettings} className="space-y-6">
                   {settingsSuccess && (
                     <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
                       {settingsSuccess}
@@ -2374,24 +2404,30 @@ export default function AdminPanel() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Image Settings */}
-                    <div className="lg:col-span-7 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* SECTION 1: MAIN HERO IMAGE */}
+                    <div className="bg-white border border-[#E8D5C4]/50 p-5 rounded-2xl space-y-4 shadow-xs">
                       <div>
-                        <label className="text-xs font-bold text-[#4A3E3D] block mb-2">이미지 입력 방식 선택</label>
-                        <div className="flex bg-gray-50 p-1 rounded-xl border border-[#E8D5C4]/30">
+                        <span className="text-xs font-extrabold text-[#C79A4A] block mb-1">SECTION 1</span>
+                        <h4 className="text-sm font-bold text-[#4A3E3D]">메인 홈 대문 이미지 설정</h4>
+                        <p className="text-[10px] text-gray-400">메인 최상단에 뜨는 감성적인 대표 히어로 이미지입니다.</p>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-500 block mb-1.5">이미지 입력 방식</label>
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-[#E8D5C4]/20">
                           {(['preset', 'url', 'upload'] as const).map((mode) => (
                             <button
                               key={mode}
                               type="button"
                               onClick={() => setSettingsImgMode(mode)}
-                              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                                 settingsImgMode === mode
-                                  ? 'bg-[#4A3E3D] text-white shadow-sm'
+                                  ? 'bg-[#4A3E3D] text-white shadow-xs'
                                   : 'text-gray-400 hover:text-gray-600'
                               }`}
                             >
-                              {mode === 'preset' ? '포근한 추천 프리셋' : mode === 'url' ? '직접 URL 입력' : '내 컴퓨터 업로드'}
+                              {mode === 'preset' ? '추천 프리셋' : mode === 'url' ? 'URL 입력' : '파일 업로드'}
                             </button>
                           ))}
                         </div>
@@ -2400,12 +2436,11 @@ export default function AdminPanel() {
                       {/* Presets */}
                       {settingsImgMode === 'preset' && (
                         <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-500 block">원하는 느낌의 공방 이미지를 선택하세요:</label>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-1.5">
                             {[
                               {
                                 url: 'https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600',
-                                name: '고양이 인형과 포근함 (기본)'
+                                name: '고양이 인형과 포근함'
                               },
                               {
                                 url: 'https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600',
@@ -2424,7 +2459,7 @@ export default function AdminPanel() {
                                 key={preset.url}
                                 type="button"
                                 onClick={() => setAdminHomeImage(preset.url)}
-                                className={`p-2 border rounded-xl text-left transition-all hover:bg-[#FFF8F1]/40 cursor-pointer ${
+                                className={`p-1.5 border rounded-xl text-left transition-all hover:bg-[#FFF8F1]/40 cursor-pointer ${
                                   adminHomeImage.startsWith(preset.url)
                                     ? 'border-[#C79A4A] bg-[#FFF8F1]'
                                     : 'border-gray-200'
@@ -2433,9 +2468,9 @@ export default function AdminPanel() {
                                 <img
                                   src={preset.url}
                                   alt={preset.name}
-                                  className="w-full h-20 object-cover rounded-lg mb-1"
+                                  className="w-full h-14 object-cover rounded-lg mb-1"
                                 />
-                                <span className="text-[9px] font-bold text-gray-600 block truncate">{preset.name}</span>
+                                <span className="text-[8px] font-bold text-gray-600 block truncate">{preset.name}</span>
                               </button>
                             ))}
                           </div>
@@ -2445,13 +2480,12 @@ export default function AdminPanel() {
                       {/* URL input */}
                       {settingsImgMode === 'url' && (
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-gray-500 block">이미지 웹 URL 주소</label>
                           <input
                             type="text"
                             value={adminHomeImage}
                             onChange={(e) => setAdminHomeImage(e.target.value)}
                             placeholder="https://images.unsplash.com/... 주소 입력"
-                            className="w-full p-2.5 bg-gray-50 border border-[#E8D5C4] rounded-xl text-xs text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A]"
+                            className="w-full p-2 bg-gray-50 border border-[#E8D5C4] rounded-xl text-[11px] text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A]"
                           />
                         </div>
                       )}
@@ -2459,29 +2493,25 @@ export default function AdminPanel() {
                       {/* Local Upload */}
                       {settingsImgMode === 'upload' && (
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-gray-500 block">파일 업로드</label>
-                          <div className="border-2 border-dashed border-[#E8D5C4] rounded-2xl p-4 text-center hover:bg-gray-50/50 transition-all cursor-pointer relative">
+                          <div className="border-2 border-dashed border-[#E8D5C4] rounded-2xl p-3 text-center hover:bg-gray-50/50 transition-all cursor-pointer relative">
                             <input
                               type="file"
                               accept="image/*"
                               onChange={handleHomeImageUpload}
                               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                             />
-                            <div className="space-y-1">
-                              <Upload className="mx-auto text-[#C79A4A]" size={20} />
-                              <p className="text-[10px] font-bold text-gray-500">클릭하여 이미지 파일을 올리거나 드래그앤드롭</p>
-                              <p className="text-[9px] text-gray-400">JPEG, PNG 최대 10MB</p>
+                            <div className="space-y-0.5">
+                              <Upload className="mx-auto text-[#C79A4A]" size={16} />
+                              <p className="text-[9px] font-bold text-gray-500">클릭하여 이미지 업로드</p>
                             </div>
                           </div>
                         </div>
                       )}
-                    </div>
 
-                    {/* Preview box */}
-                    <div className="lg:col-span-5 flex flex-col justify-between">
-                      <div className="space-y-2">
-                        <span className="text-xs font-bold text-[#4A3E3D] block">홈화면 대문 실시간 미리보기</span>
-                        <div className="border border-[#E8D5C4] rounded-2xl overflow-hidden aspect-video relative bg-gray-100 flex items-center justify-center">
+                      {/* Preview */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-400 block">실시간 미리보기</span>
+                        <div className="border border-[#E8D5C4] rounded-xl overflow-hidden aspect-video relative bg-gray-100 flex items-center justify-center">
                           {adminHomeImage ? (
                             <img
                               src={adminHomeImage}
@@ -2489,25 +2519,148 @@ export default function AdminPanel() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <span className="text-[10px] text-gray-400">이미지가 선택되지 않았습니다</span>
+                            <span className="text-[10px] text-gray-400">이미지 없음</span>
                           )}
-                          <div className="absolute inset-0 bg-black/25 flex flex-col justify-end p-3 text-white">
-                            <span className="text-[9px] font-bold tracking-widest text-[#E8D5C4] uppercase">PINO HANDMADE HANDCRAFT</span>
-                            <span className="text-xs font-extrabold truncate">한 땀, 한 땀 온기를 가득 담은 손바느질</span>
+                          <div className="absolute inset-0 bg-black/20 flex flex-col justify-end p-2 text-white">
+                            <span className="text-[8px] font-bold tracking-wider text-[#E8D5C4]">PINO HANDMADE</span>
+                            <span className="text-[10px] font-bold truncate">한 땀, 한 땀 온기를 가득 담은 손바느질</span>
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="pt-4 lg:pt-0">
-                        <button
-                          type="submit"
-                          disabled={settingsLoading}
-                          className="w-full py-3 bg-[#4A3E3D] text-white hover:bg-[#C79A4A] transition-colors rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
-                        >
-                          {settingsLoading ? '설정 저장 중...' : '공방 대문 이미지 적용하기'}
-                        </button>
+                    {/* SECTION 2: CUSTOM PROMO BANNER */}
+                    <div className="bg-white border border-[#E8D5C4]/50 p-5 rounded-2xl space-y-4 shadow-xs">
+                      <div>
+                        <span className="text-xs font-extrabold text-[#C79A4A] block mb-1">SECTION 2</span>
+                        <h4 className="text-sm font-bold text-[#4A3E3D]">반려동물 1:1 의뢰 배너 이미지 설정</h4>
+                        <p className="text-[10px] text-gray-400">홈 중간 부분의 맞춤 양모 펠트 주문 제작 의뢰를 홍보하는 이미지입니다.</p>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-500 block mb-1.5">이미지 입력 방식</label>
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-[#E8D5C4]/20">
+                          {(['preset', 'url', 'upload'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setSettingsPromoImgMode(mode)}
+                              className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                                settingsPromoImgMode === mode
+                                  ? 'bg-[#4A3E3D] text-white shadow-xs'
+                                  : 'text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              {mode === 'preset' ? '추천 프리셋' : mode === 'url' ? 'URL 입력' : '파일 업로드'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Presets */}
+                      {settingsPromoImgMode === 'preset' && (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              {
+                                url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600',
+                                name: '노란 옷 프렌치 불독 (기본)'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600',
+                                name: '안경 쓴 사랑스러운 냐옹이'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=600',
+                                name: '포근하게 잠든 웰시코기'
+                              },
+                              {
+                                url: 'https://images.unsplash.com/photo-1591561954555-607968c989ab?w=600',
+                                name: '양모 펠트 동물들'
+                              }
+                            ].map((preset) => (
+                              <button
+                                key={preset.url}
+                                type="button"
+                                onClick={() => setAdminCustomPromoImage(preset.url)}
+                                className={`p-1.5 border rounded-xl text-left transition-all hover:bg-[#FFF8F1]/40 cursor-pointer ${
+                                  adminCustomPromoImage.startsWith(preset.url)
+                                    ? 'border-[#C79A4A] bg-[#FFF8F1]'
+                                    : 'border-gray-200'
+                                }`}
+                              >
+                                <img
+                                  src={preset.url}
+                                  alt={preset.name}
+                                  className="w-full h-14 object-cover rounded-lg mb-1"
+                                />
+                                <span className="text-[8px] font-bold text-gray-600 block truncate">{preset.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* URL input */}
+                      {settingsPromoImgMode === 'url' && (
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={adminCustomPromoImage}
+                            onChange={(e) => setAdminCustomPromoImage(e.target.value)}
+                            placeholder="https://images.unsplash.com/... 주소 입력"
+                            className="w-full p-2 bg-gray-50 border border-[#E8D5C4] rounded-xl text-[11px] text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Local Upload */}
+                      {settingsPromoImgMode === 'upload' && (
+                        <div className="space-y-1.5">
+                          <div className="border-2 border-dashed border-[#E8D5C4] rounded-2xl p-3 text-center hover:bg-gray-50/50 transition-all cursor-pointer relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleCustomPromoImageUpload}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                            <div className="space-y-0.5">
+                              <Upload className="mx-auto text-[#C79A4A]" size={16} />
+                              <p className="text-[9px] font-bold text-gray-500">클릭하여 이미지 업로드</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Preview */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-400 block">실시간 미리보기</span>
+                        <div className="border border-[#E8D5C4] rounded-xl overflow-hidden aspect-video relative bg-gray-100 flex items-center justify-center">
+                          {adminCustomPromoImage ? (
+                            <img
+                              src={adminCustomPromoImage}
+                              alt="배너 미리보기"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-gray-400">이미지 없음</span>
+                          )}
+                          <div className="absolute inset-0 bg-black/10 flex flex-col justify-end p-2 text-white">
+                            <span className="text-[10px] font-extrabold truncate">양모 인형으로 고스란히 재현합니다</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={settingsLoading}
+                      className="py-3 px-8 bg-[#4A3E3D] text-white hover:bg-[#C79A4A] transition-colors rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                    >
+                      {settingsLoading ? '설정 저장 중...' : '공방 대문 & 반려동물 배너 설정 저장하기'}
+                    </button>
                   </div>
                 </form>
               </div>

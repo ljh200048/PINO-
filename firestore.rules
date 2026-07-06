@@ -13,10 +13,13 @@ service cloud.firestore {
 
     function isAdmin() {
       // In this app, admins are stored in the 'users' collection with role 'admin'
-      // Get the user document and check their role
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Or they have the designated admin email/prefix directly in their Firebase Auth token
+      return isSignedIn() && (
+        request.auth.token.email == 'lch200048@gmail.com' ||
+        request.auth.token.email.matches('^admin.*') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function isOwner(userId) {

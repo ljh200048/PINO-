@@ -186,5 +186,6 @@ export interface ClassReview {
 
 export interface StoreSettings {
   homeImage: string;
+  customPromoImage: string;
 }
 

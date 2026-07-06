@@ -990,18 +990,28 @@ export async function fetchStoreSettings(): Promise<StoreSettings> {
     const docRef = doc(db, 'settings', 'home');
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as StoreSettings;
+      const data = docSnap.data() as Partial<StoreSettings>;
+      return {
+        homeImage: data.homeImage || "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80",
+        customPromoImage: data.customPromoImage || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80"
+      };
     } else {
       const defaultSettings: StoreSettings = {
-        homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"
+        homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80",
+        customPromoImage: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80"
       };
-      await setDoc(docRef, defaultSettings);
+      try {
+        await setDoc(docRef, defaultSettings);
+      } catch (writeError) {
+        console.warn("Could not auto-create settings/home document (likely permission denied for guest):", writeError);
+      }
       return defaultSettings;
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, 'settings/home');
     return {
-      homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80"
+      homeImage: "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?w=600&auto=format&fit=crop&q=80",
+      customPromoImage: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80"
     };
   }
 }

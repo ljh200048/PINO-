@@ -205,9 +205,10 @@ export default function ClassBookingComponent({
       await addClassBooking(bookingData);
 
       // Send a secure notification via our server-side API (using the stealth alias to prevent adblockers in Incognito mode)
+      let telegramSent = false;
       try {
         const targetUrl = `${window.location.origin}/api/dispatch-booking-alert`;
-        await fetch(targetUrl, {
+        const response = await fetch(targetUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -216,8 +217,54 @@ export default function ClassBookingComponent({
           credentials: 'omit',
           body: JSON.stringify(bookingData)
         });
+        if (response.ok) {
+          telegramSent = true;
+        }
       } catch (tgErr) {
-        console.error('Telegram notification fetch failed:', tgErr);
+        console.warn('Server-side Telegram notification failed, attempting client-side fallback:', tgErr);
+      }
+
+      // Client-side fallback for static deployments (like Netlify)
+      if (!telegramSent) {
+        try {
+          const token = (process.env as any).TELEGRAM_BOT_TOKEN || ((import.meta as any).env?.VITE_TELEGRAM_BOT_TOKEN as string);
+          const chatId = (process.env as any).TELEGRAM_CHAT_ID || ((import.meta as any).env?.VITE_TELEGRAM_CHAT_ID as string);
+
+          if (token && chatId) {
+            const messageText = [
+              "🔔 [PINO공방] 새로운 무료 클래스 신청 완료! (Netlify)",
+              "",
+              `📍 클래스: ${bookingData.className || "무료 클래스"}`,
+              `👤 신청자: ${bookingData.userName} 님`,
+              `📞 연락처: ${bookingData.phone}`,
+              `✉️ 이메일: ${bookingData.email || "없음"}`,
+              `📅 예약일: ${bookingData.date}`,
+              `⏰ 예약시간: ${bookingData.time}`,
+              `👥 인원: ${bookingData.participantsCount}명`,
+              `🧸 제작항목: ${bookingData.itemToMake}`,
+              `💬 요청사항: ${bookingData.request || "없음"}`,
+              "",
+              "관리자 페이지에서 승인 여부를 검토해주세요! 🐾",
+            ].join("\n");
+
+            const telegramUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+            await fetch(telegramUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: messageText,
+              }),
+            });
+            console.log("✅ Fallback Telegram notification sent successfully from client side!");
+          } else {
+            console.warn("⚠️ Telegram token or chat ID is missing on client side.");
+          }
+        } catch (fallbackErr) {
+          console.error("❌ Direct client-side Telegram dispatch failed:", fallbackErr);
+        }
       }
 
       setBookingSuccess(true);

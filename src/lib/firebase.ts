@@ -105,7 +105,7 @@ const SEED_PRODUCTS: Omit<Product, 'id'>[] = [
     price: 28000,
     description: "따스하고 포근한 천연 양모로 제작한 시그니처 아기곰 인형입니다. 가슴의 미니 레드 하트가 매력적이며, 한 땀 한 땀 정성을 담은 바느질선이 수공예 특유의 아날로그 감성을 전달합니다.",
     images: [
-      "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80"
     ],
     stock: 12,
@@ -360,7 +360,7 @@ export async function seedInitialDatabase() {
             userName: "펠트사랑",
             rating: 5,
             content: "정말 너무너무 보들보들하고 튼튼해요! 공방 주인장님의 따스한 바느질 땀새가 고스란히 보여서 감동입니다. 선물 포장도 너무 이쁘게 와서 뜯기 아까웠어요 ㅠㅠ 번창하세요!",
-            imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=400&auto=format&fit=crop&q=80",
+            imageUrl: "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=400&auto=format&fit=crop&q=80",
             createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
             isBest: true
           },
@@ -402,7 +402,7 @@ export async function seedInitialDatabase() {
           {
             title: "🧸 [무료] 말랑콩떡 양모 아기 펠트인형 만들기",
             description: "몽글몽글한 천연 펠트 양모를 만지며 나만의 작은 아기곰 인형을 한 땀 한 땀 빚어보는 무료 입문 클래스입니다. 초보자도 쉽게 2시간 내외로 나만의 동반자 인형을 완성해볼 수 있어요.",
-            image: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+            image: "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80",
             dates: ["2026-07-05", "2026-07-12", "2026-07-19", "2026-07-26"],
             times: ["11:00", "14:00", "16:00"],
             maxParticipants: 10,
@@ -457,7 +457,7 @@ export async function seedInitialDatabase() {
               userName: "토끼맘",
               rating: 5,
               content: "아이랑 같이 와서 들었는데 선생님이 정말 하나하나 한 땀 한 땀 친절하게 알려주셔서 귀여운 곰인형 완성했어요! 너무 즐거운 힐링 시간이었습니다.",
-              imageUrl: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80",
+              imageUrl: "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80",
               createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000
             },
             {

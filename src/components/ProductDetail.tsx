@@ -211,7 +211,7 @@ export default function ProductDetail({
           {/* Main frame */}
           <div className="aspect-square bg-white rounded-3xl overflow-hidden relative border border-[#E8D5C4]/60">
             <img 
-              src={product.images[activeImageIndex] || "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80"} 
+              src={product.images[activeImageIndex] || "https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80"} 
               alt={product.name} 
               className="w-full h-full object-cover" 
               referrerPolicy="no-referrer"

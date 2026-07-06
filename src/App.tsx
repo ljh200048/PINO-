@@ -287,7 +287,7 @@ export default function App() {
                     <div className="absolute inset-4 bg-[#C79A4A]/10 rounded-[40px] rotate-3 -z-10" />
                     <div className="absolute inset-4 bg-[#BFD8C0]/20 rounded-[40px] -rotate-3 -z-10" />
                     <img
-                      src="https://images.unsplash.com/photo-1559251606-c623743a6d76?w=600&auto=format&fit=crop&q=80"
+                      src="https://images.unsplash.com/photo-1581579438747-1dc8d1e0ca96?w=600&auto=format&fit=crop&q=80"
                       alt="Handmade baby bear felt doll"
                       className="w-full h-full object-cover rounded-[36px] shadow-lg border border-[#E8D5C4]"
                       referrerPolicy="no-referrer"

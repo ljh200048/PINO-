@@ -106,6 +106,31 @@ async function startServer() {
   app.post("/api/notify-telegram", handleTelegramNotification);
   app.post("/api/dispatch-booking-alert", handleTelegramNotification);
 
+  // Support serving SEO assets and search engine verification files (like sitemap.xml, robots.txt, naver/google verification HTML/XML)
+  // directly from the project root or public folder in both development and production.
+  app.get("/:filename", (req, res, next) => {
+    const filename = req.params.filename;
+    if (filename.endsWith(".xml") || filename.endsWith(".txt") || filename.endsWith(".html")) {
+      if (filename === "index.html") {
+        return next();
+      }
+      const rootPath = path.join(process.cwd(), filename);
+      const publicPath = path.join(process.cwd(), "public", filename);
+      
+      res.sendFile(rootPath, (err) => {
+        if (err) {
+          res.sendFile(publicPath, (err2) => {
+            if (err2) {
+              next();
+            }
+          });
+        }
+      });
+    } else {
+      next();
+    }
+  });
+
   // Vite middleware setup in development, static hosting in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

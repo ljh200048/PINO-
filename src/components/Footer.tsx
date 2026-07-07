@@ -69,8 +69,7 @@ export default function Footer() {
         <div className="pt-8 text-xs text-[#FFF8F1]/50 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
           <div className="space-y-1.5 leading-relaxed">
             <p className="font-medium text-[#FFF8F1]/70">상호명: (주)PINO공방 | 대표이사: 장정현 | 개인정보관리책임자: 장정현</p>
-            <p>사업자등록번호: 000-88-00002 | 통신판매업신고번호: 제 2026-제주불편-1355 호 [사업자정보확인]</p>
-            <p>주소: 제주특별자치도 서귀포시 감귤읍 감귤동산로 7456 | 대표 이메일: wjdg7441@naver.com | 호스팅 제공자: (주)아임웹</p>
+            <p>대표 이메일: wjdg7441@naver.com | 호스팅 제공자: (주)아임웹</p>
             <p className="text-[10px] text-[#FFF8F1]/40 mt-1">© 2026 PINO공방. All rights reserved. Crafted in premium felt & wool studio.</p>
           </div>
           

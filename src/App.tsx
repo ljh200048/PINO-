@@ -25,6 +25,7 @@ import MyPage from './components/MyPage';
 import AdminPanel from './components/AdminPanel';
 import ClassBookingComponent from './components/ClassBooking';
 import ClassGalleryComponent from './components/ClassGallery';
+import SubscriptionComponent from './components/Subscription';
 
 // Icons
 import { 
@@ -601,6 +602,26 @@ export default function App() {
                   const loginBtn = document.getElementById('header-login-btn');
                   if (loginBtn) loginBtn.click();
                 }}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB: Subscription */}
+          {currentTab === 'subscription' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              id="subscription-tab-view"
+            >
+              <SubscriptionComponent
+                user={user}
+                userProfile={userProfile}
+                onLoginRequest={() => {
+                  const loginBtn = document.getElementById('header-login-btn');
+                  if (loginBtn) loginBtn.click();
+                }}
+                setCurrentTab={setCurrentTab}
               />
             </motion.div>
           )}

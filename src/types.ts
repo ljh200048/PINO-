@@ -189,3 +189,24 @@ export interface StoreSettings {
   customPromoImage: string;
 }
 
+export interface Subscription {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  packageName: 'sprout' | 'petal' | 'master' | 'experience';
+  packageLabel: string;
+  price: number;
+  status: 'active' | 'paused' | 'cancelled';
+  deliveryCycle: 'monthly';
+  shippingAddress: {
+    name: string;
+    phone: string;
+    address: string;
+    detailAddress: string;
+  };
+  paymentMethod: 'bank_transfer' | 'none';
+  createdAt: number;
+  nextDeliveryDate: string;
+}
+

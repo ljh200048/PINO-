@@ -7,9 +7,11 @@ import {
   fetchUserClassBookings,
   updateClassBookingStatus,
   fetchClasses,
+  fetchUserSubscriptions,
+  updateSubscriptionStatus,
   db 
 } from '../lib/firebase';
-import { Order, CustomOrder, UserProfile, ClassBooking, Class } from '../types';
+import { Order, CustomOrder, UserProfile, ClassBooking, Class, Subscription } from '../types';
 import { doc, updateDoc } from 'firebase/firestore';
 import { 
   Sparkles, 
@@ -23,7 +25,12 @@ import {
   AlertCircle,
   HelpCircle,
   TrendingUp,
-  Inbox
+  Inbox,
+  Pause,
+  Play,
+  XCircle,
+  Calendar,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -47,6 +54,7 @@ export default function MyPage({
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [classBookings, setClassBookings] = useState<ClassBooking[]>([]);
   const [allClasses, setAllClasses] = useState<Class[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Class booking edit states
@@ -69,16 +77,18 @@ export default function MyPage({
     async function loadUserData() {
       try {
         setLoading(true);
-        const [userOrd, userCust, userClassBks, fetchedClasses] = await Promise.all([
+        const [userOrd, userCust, userClassBks, fetchedClasses, userSubs] = await Promise.all([
           fetchUserOrders(user.uid),
           fetchUserCustomOrders(user.uid),
           fetchUserClassBookings(user.uid),
-          fetchClasses()
+          fetchClasses(),
+          fetchUserSubscriptions(user.uid)
         ]);
         setOrders(userOrd);
         setCustomOrders(userCust);
         setClassBookings(userClassBks);
         setAllClasses(fetchedClasses);
+        setSubscriptions(userSubs);
       } catch (err) {
         console.error(err);
       } finally {
@@ -145,6 +155,25 @@ export default function MyPage({
     } catch (err) {
       console.error(err);
       alert('신청 취소 도중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleChangeSubscriptionStatus = async (subId: string, newStatus: Subscription['status']) => {
+    const actionLabel = newStatus === 'paused' ? '일시 중지' : newStatus === 'active' ? '다시 시작(구독 재개)' : '해지';
+    if (!window.confirm(`정말 이 정기구독을 ${actionLabel}하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateSubscriptionStatus(subId, newStatus);
+      setSubscriptions(prev => prev.map(s => s.id === subId ? { ...s, status: newStatus } : s));
+      alert(`정기구독이 성공적으로 ${actionLabel} 처리되었습니다. 🌸`);
+    } catch (err: any) {
+      console.error('Subscription update failed:', err);
+      alert('구독 상태 변경 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -441,6 +470,114 @@ export default function MyPage({
           )}
         </div>
 
+      </div>
+
+      {/* 2. Subscriptions Management Section */}
+      <div className="bg-white border border-[#E8D5C4]/60 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xs">
+        <h3 className="text-base font-extrabold text-[#4A3E3D] pb-2 border-b border-[#E8D5C4] flex items-center gap-2">
+          <Sparkles size={18} className="text-[#C79A4A]" />
+          <span>나의 정기구독 관리 내역 ({subscriptions.length}건)</span>
+        </h3>
+
+        {subscriptions.length === 0 ? (
+          <div className="p-12 text-center bg-[#FFF8F1]/30 border border-dashed border-[#E8D5C4] rounded-2xl text-gray-400 text-xs flex flex-col items-center gap-3">
+            <span>아직 신청하신 정기구독 서비스가 존재하지 않습니다. 포근하고 따뜻한 PINO의 매월 펠트 소품 정기 배송을 신청해 보세요!</span>
+            <button
+              onClick={() => setCurrentTab('subscription')}
+              className="bg-[#4A3E3D] hover:bg-[#C79A4A] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              정기구독 플랜 보러 가기 🌸
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {subscriptions.map((sub) => {
+              // Status Styling Helper
+              const getSubStatusStyle = (status: Subscription['status']) => {
+                switch (status) {
+                  case 'active':
+                    return { text: '구독 중 🌸', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+                  case 'paused':
+                    return { text: '일시 중지 ⌛', color: 'text-amber-600 bg-amber-50 border-amber-200' };
+                  case 'cancelled':
+                    return { text: '해지 완료 ✗', color: 'text-gray-500 bg-gray-50 border-gray-200' };
+                }
+              };
+              const statusInfo = getSubStatusStyle(sub.status);
+
+              return (
+                <div key={sub.id} className="border border-[#E8D5C4]/60 rounded-2xl p-5 bg-[#FFF8F1]/10 flex flex-col justify-between gap-4 relative overflow-hidden shadow-2xs">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <span className="text-[10px] bg-[#E8D5C4]/50 text-[#4A3E3D] px-2 py-0.5 rounded font-bold uppercase">
+                          {sub.deliveryCycle === 'monthly' ? '매월 정기 배송' : sub.deliveryCycle}
+                        </span>
+                        <h4 className="font-extrabold text-sm text-[#4A3E3D] leading-tight">
+                          {sub.packageLabel}
+                        </h4>
+                        <p className="text-xs text-gray-400 font-bold">월 {sub.price.toLocaleString()}원</p>
+                      </div>
+
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] border font-bold ${statusInfo.color}`}>
+                        {statusInfo.text}
+                      </span>
+                    </div>
+
+                    <div className="border-t border-[#E8D5C4]/30 pt-2.5 text-xs text-gray-500 space-y-1.5">
+                      <p className="flex items-center gap-1">
+                        <Calendar size={13} className="text-[#C79A4A]" />
+                        <span><b>다음 배송 예정일:</b> {sub.nextDeliveryDate}</span>
+                      </p>
+                      <p className="flex items-center gap-1">
+                        <CreditCard size={13} className="text-[#C79A4A]" />
+                        <span><b>결제 방식:</b> {sub.paymentMethod === 'bank_transfer' ? '무통장 입금' : '없음(체험단)'}</span>
+                      </p>
+                      <div className="bg-[#FFF8F1]/50 border border-[#E8D5C4]/40 p-3 rounded-xl mt-2 space-y-1">
+                        <p className="font-bold text-[10px] text-[#4A3E3D] flex items-center gap-1 mb-1">
+                          <MapPin size={12} className="text-[#C79A4A]" />
+                          <span>배송지 정보</span>
+                        </p>
+                        <p className="text-[11px] text-gray-600">👤 {sub.shippingAddress.name} ({sub.shippingAddress.phone})</p>
+                        <p className="text-[11px] text-gray-600 truncate">🏠 {sub.shippingAddress.address} {sub.shippingAddress.detailAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {sub.status !== 'cancelled' && (
+                    <div className="pt-2.5 border-t border-[#E8D5C4]/30 flex justify-end gap-2 text-xs">
+                      {sub.status === 'active' ? (
+                        <button
+                          onClick={() => handleChangeSubscriptionStatus(sub.id, 'paused')}
+                          className="px-3 py-1.5 border border-amber-200 hover:bg-amber-50 text-amber-600 font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                        >
+                          <Pause size={12} />
+                          <span>이번달 쉬어가기 (일시정지)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleChangeSubscriptionStatus(sub.id, 'active')}
+                          className="px-3 py-1.5 border border-emerald-200 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                        >
+                          <Play size={12} />
+                          <span>구독 다시 재개</span>
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => handleChangeSubscriptionStatus(sub.id, 'cancelled')}
+                        className="px-3 py-1.5 border border-rose-200 hover:bg-rose-50 text-rose-500 font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                      >
+                        <XCircle size={12} />
+                        <span>구독 해지</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 3. Class Bookings Section */}

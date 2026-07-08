@@ -249,6 +249,7 @@ export default function Header({
     { id: 'shop', label: '온라인숍' },
     { id: 'custom-order', label: '1:1 주문제작' },
     { id: 'class-booking', label: '무료 클래스' },
+    ...(user ? [{ id: 'subscription', label: '정기구독 🌸' }] : []),
     { id: 'class-gallery', label: '후기' },
     { id: 'notice-faq', label: '소식 & FAQ' },
   ];

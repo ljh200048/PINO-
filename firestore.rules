@@ -96,6 +96,17 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // --- subscriptions ---
+    match /subscriptions/{subscriptionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if true;
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (existing().userId == request.auth.uid && incoming().userId == request.auth.uid)
+      );
+      allow delete: if isAdmin();
+    }
+
     // --- classes ---
     match /classes/{classId} {
       allow read: if true;

@@ -145,6 +145,26 @@
         "homeImage": { "type": "string", "description": "URL of the primary hero home image" }
       },
       "required": ["homeImage"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Periodic subscription orders for handmade felt dolls or DIY kits",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string" },
+        "packageName": { "type": "string", "enum": ["sprout", "petal", "master", "experience"] },
+        "packageLabel": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "paused", "cancelled"] },
+        "deliveryCycle": { "type": "string", "enum": ["monthly"] },
+        "shippingAddress": { "type": "object" },
+        "paymentMethod": { "type": "string", "enum": ["bank_transfer", "none"] },
+        "createdAt": { "type": "number" },
+        "nextDeliveryDate": { "type": "string" }
+      },
+      "required": ["userId", "userEmail", "userName", "packageName", "packageLabel", "price", "status", "deliveryCycle", "shippingAddress", "paymentMethod", "createdAt", "nextDeliveryDate"]
     }
   },
   "firestore": {
@@ -156,6 +176,7 @@
     "orders": { "schema": "Order", "description": "Standard shopping purchase records" },
     "custom_orders": { "schema": "CustomOrder", "description": "Custom orders submitted by users" },
     "event_logs": { "schema": "EventLog", "description": "History of events played by users" },
-    "settings": { "schema": "StoreSettings", "description": "General application/storefront configurations" }
+    "settings": { "schema": "StoreSettings", "description": "General application/storefront configurations" },
+    "subscriptions": { "schema": "Subscription", "description": "Periodic subscription records" }
   }
 }

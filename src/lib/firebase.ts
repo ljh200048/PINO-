@@ -25,7 +25,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { getStorage, ref, deleteObject } from 'firebase/storage';
-import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings } from '../types';
+import { Product, UserProfile, Order, CustomOrder, Review, FAQ, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings, Subscription } from '../types';
 
 // Load values directly from the config
 const firebaseConfig = {
@@ -1022,6 +1022,47 @@ export async function updateStoreSettings(settings: Partial<StoreSettings>) {
     await setDoc(docRef, settings, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, 'settings/home');
+    throw error;
+  }
+}
+
+export async function fetchUserSubscriptions(userId: string): Promise<Subscription[]> {
+  try {
+    const q = query(
+      collection(db, 'subscriptions'),
+      where('userId', '==', userId)
+    );
+    const snap = await getDocs(q);
+    const subs: Subscription[] = [];
+    snap.forEach((doc) => {
+      subs.push({ id: doc.id, ...(doc.data() as Subscription) });
+    });
+    return subs.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, `subscriptions?userId=${userId}`);
+    return [];
+  }
+}
+
+export async function addSubscription(sub: Omit<Subscription, 'id' | 'createdAt' | 'status'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, 'subscriptions'), {
+      ...sub,
+      status: 'active',
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'subscriptions');
+    throw error;
+  }
+}
+
+export async function updateSubscriptionStatus(id: string, status: Subscription['status']) {
+  try {
+    await updateDoc(doc(db, 'subscriptions', id), { status });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `subscriptions/${id}`);
     throw error;
   }
 }

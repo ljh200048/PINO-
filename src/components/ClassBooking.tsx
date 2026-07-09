@@ -242,7 +242,8 @@ export default function ClassBookingComponent({
       if (!telegramSent) {
         try {
           const token = (process.env as any).TELEGRAM_BOT_TOKEN || ((import.meta as any).env?.VITE_TELEGRAM_BOT_TOKEN as string);
-          const chatId = (process.env as any).TELEGRAM_CHAT_ID || ((import.meta as any).env?.VITE_TELEGRAM_CHAT_ID as string);
+          // 예약 알림 대상: 텔레그램 그룹으로 고정 (환경변수 값이 개인 DM이라 그룹 4번 주제로 가도록 하드코딩)
+          const chatId = "-1004494333596";
 
           if (token && chatId) {
             const messageText = [

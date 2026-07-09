@@ -80,7 +80,6 @@ async function startServer() {
         },
         body: JSON.stringify({
           chat_id: chatId,
-          message_thread_id: 4,
           text: messageText,
         }),
       });
@@ -380,7 +379,7 @@ ${infoBoxText}
   // directly from the project root or public folder in both development and production.
   app.get("/:filename", (req, res, next) => {
     const filename = req.params.filename;
-    if (filename.endsWith(".xml") || filename.endsWith(".txt") || filename.endsWith(".html")) {
+    if (filename.endsWith(".xml") || filename.endsWith(".txt") || filename.endsWith(".html") || filename === "og-image.jpg") {
       if (filename === "index.html") {
         return next();
       }

@@ -385,12 +385,17 @@ ${infoBoxText}
       }
       const rootPath = path.join(process.cwd(), filename);
       const publicPath = path.join(process.cwd(), "public", filename);
+      const distPath = path.join(process.cwd(), "dist", filename);
       
       res.sendFile(rootPath, (err) => {
         if (err) {
           res.sendFile(publicPath, (err2) => {
             if (err2) {
-              next();
+              res.sendFile(distPath, (err3) => {
+                if (err3) {
+                  next();
+                }
+              });
             }
           });
         }

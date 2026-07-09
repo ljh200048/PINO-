@@ -242,10 +242,13 @@ export default function ClassBookingComponent({
       if (!telegramSent) {
         try {
           const token = (process.env as any).TELEGRAM_BOT_TOKEN || ((import.meta as any).env?.VITE_TELEGRAM_BOT_TOKEN as string);
-          // 예약 알림 대상: 텔레그램 그룹으로 고정 (환경변수 값이 개인 DM이라 그룹 4번 주제로 가도록 하드코딩)
-          const chatId = "-1004494333596";
+          // 예약 알림 대상: 텔레그램 그룹 여러 곳으로 전송 (환경변수 값이 개인 DM이라 그룹으로 고정)
+          const targets = [
+            { chatId: "-1004494333596", threadId: 4 }, // 테스트 그룹 4번 주제
+            { chatId: "-1004355571043", threadId: 2 }, // 5구역 전도창 2번 주제
+          ];
 
-          if (token && chatId) {
+          if (token) {
             const messageText = [
               "🔔 [PINO공방] 새로운 무료 클래스 신청 완료! (Netlify)",
               "",
@@ -263,17 +266,23 @@ export default function ClassBookingComponent({
             ].join("\n");
 
             const telegramUrl = `https://api.telegram.org/bot${token}/sendMessage`;
-            await fetch(telegramUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_thread_id: 4,
-                text: messageText,
-              }),
-            });
+            for (const target of targets) {
+              try {
+                await fetch(telegramUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    chat_id: target.chatId,
+                    message_thread_id: target.threadId,
+                    text: messageText,
+                  }),
+                });
+              } catch (sendErr) {
+                console.error(`❌ Telegram send failed for ${target.chatId}:`, sendErr);
+              }
+            }
             console.log("✅ Fallback Telegram notification sent successfully from client side!");
           } else {
             console.warn("⚠️ Telegram token or chat ID is missing on client side.");

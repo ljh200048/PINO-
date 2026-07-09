@@ -269,6 +269,7 @@ export default function ClassBookingComponent({
               },
               body: JSON.stringify({
                 chat_id: chatId,
+                message_thread_id: 4,
                 text: messageText,
               }),
             });

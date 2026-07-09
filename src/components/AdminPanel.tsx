@@ -245,6 +245,13 @@ export default function AdminPanel() {
   const [settingsImgMode, setSettingsImgMode] = useState<'preset' | 'url' | 'upload'>('url');
   const [settingsPromoImgMode, setSettingsPromoImgMode] = useState<'preset' | 'url' | 'upload'>('url');
 
+  // Open Graph Image (Link preview) state
+  const [adminOgImage, setAdminOgImage] = useState('/og-image.jpg');
+  const [ogImgMode, setOgImgMode] = useState<'url' | 'upload'>('upload');
+  const [ogLoading, setOgLoading] = useState(false);
+  const [ogSuccess, setOgSuccess] = useState('');
+  const [ogError, setOgError] = useState('');
+
   const reloadAllData = async () => {
     try {
       setLoading(true);
@@ -326,6 +333,62 @@ export default function AdminPanel() {
     compressAndSetImage(file, (compressedBase64) => {
       setAdminCustomPromoImage(compressedBase64);
     });
+  };
+
+  const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.');
+      return;
+    }
+
+    compressAndSetImage(file, (compressedBase64) => {
+      setAdminOgImage(compressedBase64);
+    });
+  };
+
+  const handleSaveOgSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOgSuccess('');
+    setOgError('');
+    setOgLoading(true);
+
+    if (!adminOgImage) {
+      setOgError('업로드된 이미지 파일이나 입력된 이미지 URL이 없습니다.');
+      setOgLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/update-og-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image: adminOgImage })
+      });
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("서버에서 올바른 JSON 응답을 받지 못했습니다. Netlify와 같은 정적 호스팅 환경에서는 백엔드 API 기능을 지원하지 않으므로 이 설정이 제한될 수 있습니다.");
+      }
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setOgSuccess('카카오톡/인스타그램 링크 미리보기(Open Graph) 이미지가 성공적으로 변경되었습니다!');
+        // Refresh image preview with a timestamp to bust cache
+        setAdminOgImage('/og-image.jpg?t=' + Date.now());
+      } else {
+        setOgError(data.error || '이미지 변경 중 서버 오류가 발생했습니다.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setOgError(err.message || '서버와 통신하는 중 오류가 발생했습니다.');
+    } finally {
+      setOgLoading(false);
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -3036,6 +3099,119 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 </form>
+
+                <div className="pt-6 border-t border-[#E8D5C4]/30">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-extrabold text-[#4A3E3D] uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                      <Settings size={16} className="text-[#C79A4A]" />
+                      <span>카카오톡 & 인스타그램 링크 미리보기 (Open Graph) 관리</span>
+                    </h3>
+                    <p className="text-gray-400 text-[11px] leading-relaxed">
+                      카카오톡, 인스타그램, 페이스북 등 SNS에 공방 주소(링크)를 공유했을 때 나타나는 메인 이미지(Open Graph Image)를 직접 변경할 수 있습니다.<br />
+                      변경 후 반영되는데 수 초가 소요되며, 이미 등록된 링크의 미리보기 이미지는 SNS 플랫폼의 자체 캐시로 인해 즉시 갱신되지 않을 수 있습니다.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSaveOgSettings} className="space-y-6">
+                    {ogSuccess && (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
+                        {ogSuccess}
+                      </div>
+                    )}
+                    {ogError && (
+                      <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl">
+                        {ogError}
+                      </div>
+                    )}
+
+                    <div className="bg-white border border-[#E8D5C4]/50 p-5 rounded-2xl space-y-4 shadow-xs max-w-2xl">
+                      <div>
+                        <span className="text-xs font-extrabold text-[#C79A4A] block mb-1">SECTION 3</span>
+                        <h4 className="text-sm font-bold text-[#4A3E3D]">링크 미리보기 대표 이미지 설정 (1200x630 권장)</h4>
+                        <p className="text-[10px] text-gray-400">카카오톡이나 인스타그램에 주소를 보낼 때 노출되는 썸네일 이미지입니다. 업로드 시 자동으로 1200x630 고해상도로 크롭 및 최적화 가공됩니다.</p>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-500 block mb-1.5">이미지 입력 방식</label>
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-[#E8D5C4]/20 max-w-xs">
+                          {(['url', 'upload'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setOgImgMode(mode)}
+                              className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                                ogImgMode === mode
+                                  ? 'bg-[#4A3E3D] text-white shadow-xs'
+                                  : 'text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              {mode === 'url' ? 'URL 입력' : '파일 업로드'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* URL input */}
+                      {ogImgMode === 'url' && (
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={adminOgImage}
+                            onChange={(e) => setAdminOgImage(e.target.value)}
+                            placeholder="https://... 이미지 주소 입력"
+                            className="w-full p-2 bg-gray-50 border border-[#E8D5C4] rounded-xl text-[11px] text-[#4A3E3D] focus:outline-none focus:border-[#C79A4A]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Local Upload */}
+                      {ogImgMode === 'upload' && (
+                        <div className="space-y-1.5">
+                          <div className="border-2 border-dashed border-[#E8D5C4] rounded-2xl p-3 text-center hover:bg-gray-50/50 transition-all cursor-pointer relative max-w-xs">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleOgImageUpload}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                            <div className="space-y-0.5">
+                              <Upload className="mx-auto text-[#C79A4A]" size={16} />
+                              <p className="text-[9px] font-bold text-gray-500">클릭하여 이미지 업로드</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Preview */}
+                      <div className="space-y-1 max-w-xl">
+                        <span className="text-[10px] font-bold text-gray-400 block">실시간 미리보기 (1.91:1 가로 세로비)</span>
+                        <div className="border border-[#E8D5C4] rounded-xl overflow-hidden aspect-[1200/630] relative bg-gray-100 flex items-center justify-center">
+                          {adminOgImage ? (
+                            <img
+                              src={adminOgImage}
+                              alt="대표 링크 미리보기"
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-gray-400">이미지 없음</span>
+                          )}
+                          <div className="absolute inset-0 bg-black/10" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex">
+                      <button
+                        type="submit"
+                        disabled={ogLoading}
+                        className="py-3 px-8 bg-[#C79A4A] text-white hover:bg-[#4A3E3D] transition-colors rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                      >
+                        {ogLoading ? '저장 중 및 최적화 중...' : '링크 미리보기(Open Graph) 이미지 변경 및 적용'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </>

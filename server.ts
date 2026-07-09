@@ -3,6 +3,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import sharp from "sharp";
+import fs from "fs";
 
 // Load environment variables
 dotenv.config();
@@ -12,7 +14,7 @@ async function startServer() {
   const PORT = 3000;
 
   // Body parser middleware
-  app.use(express.json());
+  app.use(express.json({ limit: "20mb" }));
 
   // CORS middleware to support strict browser privacy/incognito environments (e.g. inside iframes)
   app.use((req, res, next) => {
@@ -106,6 +108,66 @@ async function startServer() {
 
   app.post("/api/notify-telegram", handleTelegramNotification);
   app.post("/api/dispatch-booking-alert", handleTelegramNotification);
+
+  // API endpoint for updating the Open Graph (link preview) Image
+  app.post("/api/update-og-image", async (req, res) => {
+    try {
+      const { image } = req.body;
+      if (!image) {
+        return res.status(400).json({ success: false, error: "Image data is required" });
+      }
+
+      let buffer: Buffer;
+
+      if (image.startsWith("http://") || image.startsWith("https://")) {
+        // Fetch from remote URL
+        const response = await fetch(image);
+        if (!response.ok) {
+          return res.status(400).json({ success: false, error: `Failed to fetch remote image from URL: ${response.statusText}` });
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+      } else if (image.startsWith("data:image/")) {
+        // Extract the base64 part
+        const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+          return res.status(400).json({ success: false, error: "Failed to parse base64 image data" });
+        }
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        return res.status(400).json({ success: false, error: "Invalid image format. Expected URL or data URI." });
+      }
+      
+      // Use sharp to convert/resize to 1200x630 JPEG (standard high-res OG image spec) with high quality
+      const ogBuffer = await sharp(buffer)
+        .resize(1200, 630, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .jpeg({ quality: 95 })
+        .toBuffer();
+
+      // Write to public/og-image.jpg
+      const publicPath = path.join(process.cwd(), "public", "og-image.jpg");
+      fs.writeFileSync(publicPath, ogBuffer);
+      console.log("Successfully wrote to public/og-image.jpg");
+
+      // Write to dist/og-image.jpg if dist exists
+      const distPath = path.join(process.cwd(), "dist", "og-image.jpg");
+      if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+        fs.writeFileSync(distPath, ogBuffer);
+        console.log("Successfully wrote to dist/og-image.jpg");
+      }
+
+      return res.status(200).json({ success: true, message: "Open Graph image successfully updated!" });
+    } catch (error) {
+      console.error("Error updating Open Graph image:", error);
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      });
+    }
+  });
 
   // API endpoint for sending Subscription Email Confirmation
   app.post("/api/send-subscription-email", async (req, res) => {

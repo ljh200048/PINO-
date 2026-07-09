@@ -231,8 +231,13 @@ export default function ClassBookingComponent({
           credentials: 'omit',
           body: JSON.stringify(bookingData)
         });
-        if (response.ok) {
+        
+        // Verify response is actually JSON and not an HTML routing fallback
+        const contentType = response.headers.get("content-type");
+        if (response.ok && contentType && contentType.includes("application/json")) {
           telegramSent = true;
+        } else {
+          console.warn('Server responded but it is not valid JSON (likely static HTML fallback on Netlify). Falling back to client-side Telegram dispatch.');
         }
       } catch (tgErr) {
         console.warn('Server-side Telegram notification failed, attempting client-side fallback:', tgErr);

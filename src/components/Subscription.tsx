@@ -196,7 +196,7 @@ export default function SubscriptionComponent({
       
       // Send email notification to user
       try {
-        await fetch('/api/send-subscription-email', {
+        const response = await fetch('/api/send-subscription-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -212,6 +212,13 @@ export default function SubscriptionComponent({
             depositor: depositor,
           }),
         });
+        
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || !contentType || !contentType.includes("application/json")) {
+          console.warn('Subscription confirmation email request did not receive a valid JSON response (likely on a static deployment like Netlify). Email simulation/sending was skipped.');
+        } else {
+          console.log('Subscription confirmation email request processed by backend server.');
+        }
       } catch (emailErr) {
         console.error('Failed to dispatch subscription confirmation email:', emailErr);
       }

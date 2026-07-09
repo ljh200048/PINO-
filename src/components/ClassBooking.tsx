@@ -49,6 +49,10 @@ export default function ClassBookingComponent({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [isCustomDate, setIsCustomDate] = useState<boolean>(false);
+  const [customDate, setCustomDate] = useState<string>('');
+  const [isCustomTime, setIsCustomTime] = useState<boolean>(false);
+  const [customTime, setCustomTime] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -79,9 +83,15 @@ export default function ClassBookingComponent({
           setSelectedClassId(fetchedClasses[0].id);
           if (fetchedClasses[0].dates.length > 0) {
             setSelectedDate(fetchedClasses[0].dates[0]);
+            setIsCustomDate(false);
+          } else {
+            setIsCustomDate(true);
           }
           if (fetchedClasses[0].times.length > 0) {
             setSelectedTime(fetchedClasses[0].times[0]);
+            setIsCustomTime(false);
+          } else {
+            setIsCustomTime(true);
           }
         }
       } catch (err) {
@@ -100,13 +110,17 @@ export default function ClassBookingComponent({
       if (selected) {
         if (selected.dates.length > 0) {
           setSelectedDate(selected.dates[0]);
+          setIsCustomDate(false);
         } else {
           setSelectedDate('');
+          setIsCustomDate(true);
         }
         if (selected.times.length > 0) {
           setSelectedTime(selected.times[0]);
+          setIsCustomTime(false);
         } else {
           setSelectedTime('');
+          setIsCustomTime(true);
         }
       }
     }
@@ -491,7 +505,7 @@ export default function ClassBookingComponent({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#4A3E3D] flex items-center gap-1">
                   <Calendar size={13} className="text-[#C79A4A]" />
-                  <span>희망 날짜 선택</span>
+                  <span>희망 날짜 선택 및 입력 *</span>
                 </label>
                 {activeClass && activeClass.dates.length > 0 ? (
                   <div className="flex flex-wrap gap-2.5">
@@ -499,9 +513,12 @@ export default function ClassBookingComponent({
                       <button
                         type="button"
                         key={d}
-                        onClick={() => setSelectedDate(d)}
+                        onClick={() => {
+                          setSelectedDate(d);
+                          setIsCustomDate(false);
+                        }}
                         className={`px-4 py-2.5 text-xs rounded-xl font-bold transition-all cursor-pointer border ${
-                          selectedDate === d
+                          selectedDate === d && !isCustomDate
                             ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]'
                             : 'bg-white text-gray-600 border-[#E8D5C4]/60 hover:bg-[#E8D5C4]/20'
                         }`}
@@ -509,17 +526,66 @@ export default function ClassBookingComponent({
                         {d}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomDate(true);
+                        setSelectedDate(customDate || '');
+                      }}
+                      className={`px-4 py-2.5 text-xs rounded-xl font-bold transition-all cursor-pointer border ${
+                        isCustomDate
+                          ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]'
+                          : 'bg-[#FFF8F1] text-[#C79A4A] border-[#E8D5C4]/60 hover:bg-[#E8D5C4]/20'
+                      }`}
+                    >
+                      ✨ 직접 입력
+                    </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 font-medium">추후에 알려드립니다</p>
+                  <div className="pt-1">
+                    <input
+                      type="text"
+                      required
+                      placeholder="예: 2026-07-20 (월) 또는 희망하는 요일/날짜 직접 입력"
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        setCustomDate(e.target.value);
+                      }}
+                      className="w-full px-4 py-2.5 bg-white border border-[#C79A4A] rounded-xl text-xs text-[#4A3E3D] placeholder-[#4A3E3D]/40 focus:outline-none"
+                    />
+                  </div>
                 )}
+
+                <AnimatePresence>
+                  {activeClass && activeClass.dates.length > 0 && isCustomDate && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="pt-2"
+                    >
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 2026-07-20 (월) 또는 희망하는 요일/날짜 직접 입력"
+                        value={customDate}
+                        onChange={(e) => {
+                          setCustomDate(e.target.value);
+                          setSelectedDate(e.target.value);
+                        }}
+                        className="w-full px-4 py-2.5 bg-white border border-[#C79A4A] rounded-xl text-xs text-[#4A3E3D] placeholder-[#4A3E3D]/40 focus:outline-none"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Time Selection */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#4A3E3D] flex items-center gap-1">
                   <Clock size={13} className="text-[#C79A4A]" />
-                  <span>희망 시간 선택</span>
+                  <span>희망 시간 선택 및 입력 *</span>
                 </label>
                 {activeClass && activeClass.times.length > 0 ? (
                   <div className="flex flex-wrap gap-2.5">
@@ -527,9 +593,12 @@ export default function ClassBookingComponent({
                       <button
                         type="button"
                         key={t}
-                        onClick={() => setSelectedTime(t)}
+                        onClick={() => {
+                          setSelectedTime(t);
+                          setIsCustomTime(false);
+                        }}
                         className={`px-4 py-2.5 text-xs rounded-xl font-bold transition-all cursor-pointer border ${
-                          selectedTime === t
+                          selectedTime === t && !isCustomTime
                             ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]'
                             : 'bg-white text-gray-600 border-[#E8D5C4]/60 hover:bg-[#E8D5C4]/20'
                         }`}
@@ -537,10 +606,59 @@ export default function ClassBookingComponent({
                         {t}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomTime(true);
+                        setSelectedTime(customTime || '');
+                      }}
+                      className={`px-4 py-2.5 text-xs rounded-xl font-bold transition-all cursor-pointer border ${
+                        isCustomTime
+                          ? 'bg-[#4A3E3D] text-white border-[#4A3E3D]'
+                          : 'bg-[#FFF8F1] text-[#C79A4A] border-[#E8D5C4]/60 hover:bg-[#E8D5C4]/20'
+                      }`}
+                    >
+                      ✨ 직접 입력
+                    </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 font-medium">추후에 알려드립니다</p>
+                  <div className="pt-1">
+                    <input
+                      type="text"
+                      required
+                      placeholder="예: 오후 2시, 14:30, 혹은 편하신 시간 자유 입력"
+                      value={selectedTime}
+                      onChange={(e) => {
+                        setSelectedTime(e.target.value);
+                        setCustomTime(e.target.value);
+                      }}
+                      className="w-full px-4 py-2.5 bg-white border border-[#C79A4A] rounded-xl text-xs text-[#4A3E3D] placeholder-[#4A3E3D]/40 focus:outline-none"
+                    />
+                  </div>
                 )}
+
+                <AnimatePresence>
+                  {activeClass && activeClass.times.length > 0 && isCustomTime && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="pt-2"
+                    >
+                      <input
+                        type="text"
+                        required
+                        placeholder="예: 오후 2시, 14:30, 혹은 편하신 시간 자유 입력"
+                        value={customTime}
+                        onChange={(e) => {
+                          setCustomTime(e.target.value);
+                          setSelectedTime(e.target.value);
+                        }}
+                        className="w-full px-4 py-2.5 bg-white border border-[#C79A4A] rounded-xl text-xs text-[#4A3E3D] placeholder-[#4A3E3D]/40 focus:outline-none"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Real-time Status Indicator Box */}

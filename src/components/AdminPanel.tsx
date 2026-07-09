@@ -23,9 +23,11 @@ import {
   removeClassReview,
   fetchStoreSettings,
   updateStoreSettings,
+  fetchAllSubscriptions,
+  updateSubscriptionStatus,
   db 
 } from '../lib/firebase';
-import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings } from '../types';
+import { Product, Order, CustomOrder, Notice, EventLog, Class, ClassBooking, ClassReview, StoreSettings, Subscription } from '../types';
 import { doc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { 
   ShieldAlert, 
@@ -45,7 +47,10 @@ import {
   Link,
   Upload,
   Edit,
-  Star
+  Star,
+  Gift,
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -54,9 +59,14 @@ export default function AdminPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'active' | 'paused' | 'cancelled'>('all');
+  const [subSearchQuery, setSubSearchQuery] = useState('');
+  const [logFilter, setLogFilter] = useState<'all' | 'events' | 'giveaway'>('all');
+  const [drawWinners, setDrawWinners] = useState<string[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings' | 'reviews' | 'settings'>('stats');
+  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'products' | 'orders' | 'custom' | 'notices' | 'logs' | 'classes' | 'bookings' | 'reviews' | 'settings' | 'subscriptions'>('stats');
 
   // Class & Booking lists
   const [classes, setClasses] = useState<Class[]>([]);
@@ -238,7 +248,7 @@ export default function AdminPanel() {
   const reloadAllData = async () => {
     try {
       setLoading(true);
-      const [p, o, c, l, cls, bks, crs, settings] = await Promise.all([
+      const [p, o, c, l, cls, bks, crs, settings, subs] = await Promise.all([
         fetchProducts(),
         fetchAllOrders(),
         fetchAllCustomOrders(),
@@ -246,7 +256,8 @@ export default function AdminPanel() {
         fetchClasses(),
         fetchClassBookings(),
         fetchClassReviews(),
-        fetchStoreSettings()
+        fetchStoreSettings(),
+        fetchAllSubscriptions()
       ]);
       setProducts(p);
       setOrders(o);
@@ -255,6 +266,7 @@ export default function AdminPanel() {
       setClasses(cls);
       setClassBookings(bks);
       setClassReviews(crs);
+      setSubscriptions(subs);
       if (settings) {
         if (settings.homeImage) {
           setAdminHomeImage(settings.homeImage);
@@ -265,6 +277,24 @@ export default function AdminPanel() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminChangeSubStatus = async (subId: string, newStatus: Subscription['status']) => {
+    const statusLabel = newStatus === 'active' ? '활성화' : newStatus === 'paused' ? '일시 정지' : '해지';
+    if (!window.confirm(`정말 이 구독 상태를 [${statusLabel}]로 변경하시겠습니까?`)) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await updateSubscriptionStatus(subId, newStatus);
+      setSubscriptions(prev => prev.map(s => s.id === subId ? { ...s, status: newStatus } : s));
+      alert(`구독 상태가 성공적으로 [${statusLabel}] 상태로 변경되었습니다. 🧸`);
+    } catch (err) {
+      console.error(err);
+      alert('구독 상태를 수정하는 과정에서 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -815,7 +845,16 @@ export default function AdminPanel() {
             activeSubTab === 'logs' ? 'border-[#C79A4A] text-[#C79A4A]' : 'border-transparent text-gray-500 hover:text-[#4A3E3D]'
           }`}
         >
-          룰렛/출석 로그
+          이벤트 & 무료나눔 로그
+        </button>
+        <button
+          onClick={() => setActiveSubTab('subscriptions')}
+          className={`pb-2.5 px-4 cursor-pointer border-b-2 transition-all ${
+            activeSubTab === 'subscriptions' ? 'border-[#C79A4A] text-[#C79A4A]' : 'border-transparent text-gray-500 hover:text-[#4A3E3D]'
+          }`}
+          id="admin-tab-subscriptions"
+        >
+          정기구독 회원 관리 ({subscriptions.length})
         </button>
         <button
           onClick={() => setActiveSubTab('classes')}
@@ -1637,30 +1676,364 @@ export default function AdminPanel() {
             )}
 
             {/* Event Log audit trails */}
-            {activeSubTab === 'logs' && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-extrabold text-[#4A3E3D] pb-1 border-b border-[#E8D5C4]/30">스토어 출석체크 & 룰렛 보상 히스토리 로그</h3>
-                
-                {eventLogs.length === 0 ? (
-                  <p className="text-xs text-center text-gray-400 py-10">이벤트 참여 이력이 없습니다.</p>
-                ) : (
-                  <div className="max-h-[300px] overflow-y-auto space-y-2">
-                    {eventLogs.map((log) => (
-                      <div key={log.id} className="p-3 bg-white border border-gray-100 rounded-xl flex justify-between items-center text-xs">
-                        <div>
-                          <span className="text-gray-400 text-[10px] block">{new Date(log.createdAt).toLocaleString()}</span>
-                          <span className="font-bold text-[#4A3E3D]">{log.userEmail}</span>
-                          <span className="ml-2 bg-[#E8D5C4]/30 text-[#4A3E3D] px-1.5 py-0.5 rounded text-[10px]">
-                            {log.eventType === 'roulette' ? '룰렛' : log.eventType === 'attendance' ? '출석' : '가입'}
-                          </span>
-                        </div>
-                        <span className="font-extrabold text-[#C79A4A]">{log.reward}</span>
-                      </div>
-                    ))}
+            {activeSubTab === 'logs' && (() => {
+              const giveawayLogs = eventLogs.filter(log => log.eventType === 'giveaway');
+              const otherEventLogs = eventLogs.filter(log => log.eventType !== 'giveaway');
+              
+              const filteredLogs = logFilter === 'all' 
+                ? eventLogs 
+                : logFilter === 'giveaway' 
+                ? giveawayLogs 
+                : otherEventLogs;
+
+              const handleDrawGiveawayWinners = () => {
+                if (giveawayLogs.length === 0) {
+                  alert('무료 나눔 신청자가 존재하지 않아 추첨할 수 없습니다.');
+                  return;
+                }
+                const uniqueEmails = Array.from(new Set(giveawayLogs.map(l => l.userEmail)));
+                const shuffled = [...uniqueEmails].sort(() => 0.5 - Math.random());
+                const winners = shuffled.slice(0, 3);
+                setDrawWinners(winners);
+              };
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 border-b border-[#E8D5C4]/30 gap-3">
+                    <h3 className="text-sm font-extrabold text-[#4A3E3D] flex items-center gap-1.5">
+                      <Activity size={16} className="text-[#C79A4A]" />
+                      <span>이벤트 참여 & 무료나눔 신청 관리자 콘솔</span>
+                    </h3>
+                    
+                    {/* Log Filter Buttons */}
+                    <div className="flex bg-white border border-[#E8D5C4] p-1 rounded-xl text-[11px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setLogFilter('all')}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          logFilter === 'all' ? 'bg-[#4A3E3D] text-white' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        전체 로그 ({eventLogs.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogFilter('events')}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          logFilter === 'events' ? 'bg-[#4A3E3D] text-white' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        출석/룰렛 ({otherEventLogs.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogFilter('giveaway')}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          logFilter === 'giveaway' ? 'bg-[#4A3E3D] text-white' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        무료나눔 신청 ({giveawayLogs.length})
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* Giveaway-Specific Admin Tools Section */}
+                  {logFilter === 'giveaway' && (
+                    <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/70 p-5 rounded-2xl space-y-4 shadow-3xs animate-fadeIn">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black text-[#4A3E3D] flex items-center gap-1">
+                            <Gift size={14} className="text-[#C79A4A]" />
+                            <span>🎁 [베이지 펠트 아기곰 인형 스페셜 패키지] 나눔 이벤트 신청자</span>
+                          </h4>
+                          <p className="text-[11px] text-gray-500">
+                            리뉴얼 오픈 기념으로 공방 방문 수령 당첨자 추첨 및 응모자 명단을 실시간으로 관리하는 영역입니다.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleDrawGiveawayWinners}
+                          className="bg-[#4A3E3D] hover:bg-[#C79A4A] text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all shadow-sm active:scale-95 self-stretch md:self-auto justify-center"
+                        >
+                          <Trophy size={14} />
+                          <span>럭키 드로우! 당첨자 3명 뽑기 🧸</span>
+                        </button>
+                      </div>
+
+                      {drawWinners.length > 0 && (
+                        <div className="bg-white border-2 border-dashed border-[#C79A4A]/80 p-5 rounded-2xl space-y-3 text-center shadow-2xs relative">
+                          <button
+                            type="button"
+                            onClick={() => setDrawWinners([])}
+                            className="absolute top-2 right-2 text-gray-300 hover:text-gray-500 cursor-pointer"
+                            title="결과 지우기"
+                          >
+                            ×
+                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <Sparkles size={16} className="text-[#C79A4A] animate-spin" />
+                            <h5 className="font-extrabold text-xs text-[#4A3E3D]">🧸 축하합니다! 당첨자 목록</h5>
+                            <Sparkles size={16} className="text-[#C79A4A] animate-spin" />
+                          </div>
+                          <div className="flex flex-wrap gap-2 justify-center pt-1">
+                            {drawWinners.map((winner, idx) => (
+                              <div key={idx} className="bg-[#FFF8F1] border border-[#E8D5C4] text-[#4A3E3D] text-xs font-mono font-bold px-4 py-2 rounded-xl shadow-3xs flex items-center gap-1.5">
+                                <span className="text-[#C79A4A]">👑 {idx + 1}등:</span>
+                                <span>{winner}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-bold">참가 신청 회원 리스트에서 실시간으로 중복없이 엄선된 당첨자 3인입니다.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {filteredLogs.length === 0 ? (
+                    <p className="text-xs text-center text-gray-400 py-10">
+                      {logFilter === 'giveaway' 
+                        ? '무료 나눔 이벤트 참가 신청자가 아직 없습니다.' 
+                        : '해당하는 이벤트 참여 이력이 없습니다.'}
+                    </p>
+                  ) : (
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+                      {filteredLogs.map((log) => (
+                        <div key={log.id} className="p-3 bg-white border border-[#E8D5C4]/40 rounded-xl flex justify-between items-center text-xs shadow-3xs hover:border-[#C79A4A]/30 transition-all">
+                          <div>
+                            <span className="text-gray-400 text-[10px] block">{new Date(log.createdAt).toLocaleString()}</span>
+                            <span className="font-bold text-[#4A3E3D]">{log.userEmail}</span>
+                            <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              log.eventType === 'giveaway'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-[#E8D5C4]/30 text-[#4A3E3D]'
+                            }`}>
+                              {log.eventType === 'roulette' 
+                                ? '룰렛' 
+                                : log.eventType === 'attendance' 
+                                ? '출석' 
+                                : log.eventType === 'giveaway' 
+                                ? '🎁 무료나눔신청' 
+                                : '가입'}
+                            </span>
+                          </div>
+                          <span className="font-extrabold text-[#C79A4A]">{log.reward}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Subscriptions Subtab */}
+            {activeSubTab === 'subscriptions' && (() => {
+              const filteredSubs = subscriptions.filter(sub => {
+                const matchesStatus = subStatusFilter === 'all' || sub.status === subStatusFilter;
+                const searchLower = subSearchQuery.toLowerCase();
+                const matchesSearch = !subSearchQuery || 
+                  sub.userEmail.toLowerCase().includes(searchLower) ||
+                  sub.userName.toLowerCase().includes(searchLower) ||
+                  sub.packageName.toLowerCase().includes(searchLower) ||
+                  sub.packageLabel.toLowerCase().includes(searchLower) ||
+                  (sub.shippingAddress?.name && sub.shippingAddress.name.toLowerCase().includes(searchLower)) ||
+                  (sub.shippingAddress?.address && sub.shippingAddress.address.toLowerCase().includes(searchLower));
+                return matchesStatus && matchesSearch;
+              });
+
+              const activeCount = subscriptions.filter(s => s.status === 'active').length;
+              const pausedCount = subscriptions.filter(s => s.status === 'paused').length;
+              const cancelledCount = subscriptions.filter(s => s.status === 'cancelled').length;
+
+              return (
+                <div className="space-y-6" id="admin-subtab-subscriptions">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 border-b border-[#E8D5C4]/30 gap-3">
+                    <h3 className="text-sm font-extrabold text-[#4A3E3D] flex items-center gap-1.5">
+                      <Gift size={16} className="text-[#C79A4A]" />
+                      <span>PINO공방 정기구독 신청 회원 관리</span>
+                    </h3>
+                    <p className="text-xs text-gray-400">구독 신청 회원의 주소지, 연락처 및 상태를 조회하고 제어합니다.</p>
+                  </div>
+
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="bg-white border border-[#E8D5C4] p-4 rounded-2xl flex flex-col justify-between shadow-3xs">
+                      <span className="text-[10px] font-bold text-gray-400 block uppercase">전체 신청 건수</span>
+                      <span className="text-xl font-black text-[#4A3E3D] mt-1">{subscriptions.length}건</span>
+                    </div>
+                    <div className="bg-[#FFF8F1] border border-emerald-100 p-4 rounded-2xl flex flex-col justify-between shadow-3xs">
+                      <span className="text-[10px] font-bold text-emerald-600 block uppercase">구독 유지/활성</span>
+                      <span className="text-xl font-black text-emerald-700 mt-1">{activeCount}건</span>
+                    </div>
+                    <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl flex flex-col justify-between shadow-3xs">
+                      <span className="text-[10px] font-bold text-amber-600 block uppercase">구독 일시 정지</span>
+                      <span className="text-xl font-black text-amber-700 mt-1">{pausedCount}건</span>
+                    </div>
+                    <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col justify-between shadow-3xs">
+                      <span className="text-[10px] font-bold text-rose-400 block uppercase">구독 해지 완료</span>
+                      <span className="text-xl font-black text-rose-600 mt-1">{cancelledCount}건</span>
+                    </div>
+                  </div>
+
+                  {/* Filters & Search Control */}
+                  <div className="flex flex-col md:flex-row gap-3 justify-between items-center bg-white p-4 border border-[#E8D5C4]/50 rounded-2xl">
+                    <div className="flex bg-gray-50 border border-[#E8D5C4]/60 p-1 rounded-xl text-[11px] font-bold w-full md:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => setSubStatusFilter('all')}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex-1 md:flex-none text-center ${
+                          subStatusFilter === 'all' ? 'bg-[#4A3E3D] text-white shadow-3xs' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        전체 ({subscriptions.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubStatusFilter('active')}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex-1 md:flex-none text-center ${
+                          subStatusFilter === 'active' ? 'bg-emerald-600 text-white shadow-3xs' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        활성 ({activeCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubStatusFilter('paused')}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex-1 md:flex-none text-center ${
+                          subStatusFilter === 'paused' ? 'bg-amber-500 text-white shadow-3xs' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        일시정지 ({pausedCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubStatusFilter('cancelled')}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex-1 md:flex-none text-center ${
+                          subStatusFilter === 'cancelled' ? 'bg-rose-500 text-white shadow-3xs' : 'text-gray-400 hover:text-[#4A3E3D]'
+                        }`}
+                      >
+                        해지 ({cancelledCount})
+                      </button>
+                    </div>
+
+                    <div className="relative w-full md:max-w-xs">
+                      <input
+                        type="text"
+                        placeholder="이메일, 이름, 패키지, 주소 검색..."
+                        value={subSearchQuery}
+                        onChange={(e) => setSubSearchQuery(e.target.value)}
+                        className="w-full text-xs border border-[#E8D5C4] focus:outline-none focus:ring-1 focus:ring-[#C79A4A] pl-3 pr-8 py-2 rounded-xl text-[#4A3E3D] bg-white font-medium"
+                      />
+                      {subSearchQuery && (
+                        <button
+                          onClick={() => setSubSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xs font-bold"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* List of Subscriptions */}
+                  {filteredSubs.length === 0 ? (
+                    <div className="p-12 text-center bg-white border border-[#E8D5C4]/30 rounded-2xl">
+                      <Gift size={28} className="text-gray-300 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-bold">일치하는 정기구독 신청 정보가 없습니다.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredSubs.map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="bg-white border border-[#E8D5C4]/60 rounded-2xl p-5 space-y-4 hover:shadow-xs transition-all flex flex-col justify-between"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <span className="text-[9px] font-mono font-bold text-gray-400 block">신청일: {new Date(sub.createdAt).toLocaleString()}</span>
+                                <span className="text-xs font-black text-[#4A3E3D] block mt-0.5">{sub.userName} ({sub.userEmail})</span>
+                              </div>
+                              <span className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border ${
+                                sub.status === 'active'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : sub.status === 'paused'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200'
+                              }`}>
+                                {sub.status === 'active' ? '구독 활성' : sub.status === 'paused' ? '일시 정지' : '해지 완료'}
+                              </span>
+                            </div>
+
+                            <div className="bg-[#FFF8F1]/40 border border-[#E8D5C4]/30 p-3 rounded-xl space-y-1">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-400">구독 상품</span>
+                                <span className="font-extrabold text-[#4A3E3D]">{sub.packageLabel} ({sub.packageName})</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-400">월 납부 요금</span>
+                                <span className="font-extrabold text-[#C79A4A]">{sub.price === 0 ? "0원 (무료 체험)" : sub.price.toLocaleString() + '원'}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-400">입금자 지명</span>
+                                <span className="font-bold text-[#4A3E3D]">{sub.depositor || '없음(체험단)'}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-400">첫 발송 예정일</span>
+                                <span className="font-bold text-indigo-600">{sub.nextDeliveryDate}</span>
+                              </div>
+                            </div>
+
+                            <div className="bg-gray-50/50 border border-gray-100 p-3 rounded-xl space-y-1">
+                              <span className="text-[10px] font-bold text-gray-400 block border-b border-gray-100 pb-1 mb-1">🚚 배송 및 연락망</span>
+                              <div className="grid grid-cols-3 gap-1 text-[11px]">
+                                <span className="text-gray-400">수령인</span>
+                                <span className="col-span-2 font-bold text-gray-700">{sub.shippingAddress?.name || sub.userName}</span>
+                                <span className="text-gray-400">연락처</span>
+                                <span className="col-span-2 font-bold text-gray-700">{sub.shippingAddress?.phone || '없음'}</span>
+                                <span className="text-gray-400">배송 주소</span>
+                                <span className="col-span-2 text-gray-600 font-medium">
+                                  {sub.shippingAddress?.address ? `${sub.shippingAddress.address} ${sub.shippingAddress.detailAddress || ''}` : '정보 없음'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2">
+                            {sub.status !== 'active' && (
+                              <button
+                                type="button"
+                                onClick={() => handleAdminChangeSubStatus(sub.id, 'active')}
+                                className="flex-1 text-[11px] font-black py-1.5 rounded-xl cursor-pointer bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all text-center"
+                              >
+                                활성화 전환
+                              </button>
+                            )}
+                            {sub.status === 'active' && (
+                              <button
+                                type="button"
+                                onClick={() => handleAdminChangeSubStatus(sub.id, 'paused')}
+                                className="flex-1 text-[11px] font-black py-1.5 rounded-xl cursor-pointer bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white transition-all text-center"
+                              >
+                                일시 정지
+                              </button>
+                            )}
+                            {sub.status !== 'cancelled' && (
+                              <button
+                                type="button"
+                                onClick={() => handleAdminChangeSubStatus(sub.id, 'cancelled')}
+                                className="flex-1 text-[11px] font-black py-1.5 rounded-xl cursor-pointer bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white transition-all text-center"
+                              >
+                                구독 해지
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Class Registration Subtab */}
             {activeSubTab === 'classes' && (

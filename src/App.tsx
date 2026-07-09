@@ -206,8 +206,12 @@ export default function App() {
   // Free Giveaway Event Entry
   const handleJoinGiveaway = async () => {
     if (!user) {
-      // Trigger login modal
-      alert('무료 나눔 이벤트 참가는 로그인이 필요합니다. 우측 상단의 [로그인 / 가입]을 먼저 진행해 주세요! 🧸');
+      // Trigger login modal automatically
+      alert('무료 나눔 이벤트 참가는 로그인이 필요합니다. 로그인 화면으로 안내해 드릴게요! 🧸');
+      const loginBtn = document.getElementById('header-login-btn');
+      if (loginBtn) {
+        loginBtn.click();
+      }
       return;
     }
 
@@ -409,7 +413,7 @@ export default function App() {
                       🎁 신규 리뉴얼 오픈 기념, 무료 나눔 나들이!
                     </h3>
                     <p className="text-xs text-[#4A3E3D]/80 leading-relaxed max-w-md">
-                      지금 아래 참가 신청을 완료해주시면, 추첨을 통해 3분께 <b>[베이지 펠트 아기곰 인형 스페셜 패키지]</b>를 자택으로 무료 배송해 드립니다!
+                      지금 아래 참가 신청을 완료해주시면, 추첨을 통해 3분께 <b>[베이지 펠트 아기곰 인형 스페셜 패키지]</b>를 공방에서 직접 만나 전해 드립니다!
                     </p>
                   </div>
 

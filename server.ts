@@ -231,17 +231,106 @@ ${infoBoxText}
 © 2026 PINO공방. All rights reserved.
 `;
 
+      const adminEmail = process.env.ADMIN_EMAIL || "lch200048@gmail.com";
+
+      const adminHtmlContent = `
+<div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #C79A4A; border-radius: 24px; background-color: #ffffff; color: #4A3E3D;">
+  <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #E8D5C4; padding-bottom: 15px;">
+    <span style="font-size: 11px; font-weight: bold; color: #ffffff; background-color: #C79A4A; padding: 5px 12px; border-radius: 12px; display: inline-block; letter-spacing: 1px;">관리자 알림</span>
+    <h1 style="font-size: 22px; font-weight: 800; margin-top: 15px; color: #4A3E3D;">🎁 새로운 정기구독 신청 발생!</h1>
+    <p style="font-size: 13px; color: #888888; margin-top: 5px;">PINO공방에 새로운 정기구독 회원이 등록되었습니다. 세부 내용을 확인해 주세요.</p>
+  </div>
+  
+  <div style="background-color: #FFF8F1; border: 1px solid #E8D5C4; border-radius: 16px; padding: 20px; margin-bottom: 15px;">
+    <h3 style="font-size: 14px; font-weight: bold; margin-top: 0; color: #4A3E3D; border-bottom: 1px solid #E8D5C4; padding-bottom: 8px;">👤 신청인 정보</h3>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 10px;">
+      <tr>
+        <td style="padding: 5px 0; color: #888888; width: 120px;">신청자명 (계정)</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${userName} (${userEmail})</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background-color: #FFF8F1; border: 1px solid #E8D5C4; border-radius: 16px; padding: 20px; margin-bottom: 15px;">
+    <h3 style="font-size: 14px; font-weight: bold; margin-top: 0; color: #4A3E3D; border-bottom: 1px solid #E8D5C4; padding-bottom: 8px;">📋 신청 구독 정보</h3>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 10px;">
+      <tr>
+        <td style="padding: 5px 0; color: #888888; width: 120px;">구독 상품</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${packageLabel} (${packageName})</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; color: #888888;">월 결제액</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #C79A4A; font-size: 14px;">${price === 0 ? "0원 (무료 체험단)" : price.toLocaleString() + "원"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; color: #888888;">입금자 지명</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${depositor || "없음(체험단)"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; color: #888888;">첫 발송일</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${nextDeliveryDate}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background-color: #FFF8F1; border: 1px solid #E8D5C4; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="font-size: 14px; font-weight: bold; margin-top: 0; color: #4A3E3D; border-bottom: 1px solid #E8D5C4; padding-bottom: 8px;">🚚 배송 수령처 정보</h3>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 10px;">
+      <tr>
+        <td style="padding: 5px 0; color: #888888; width: 120px;">수령인명</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${shippingAddress?.name || userName}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; color: #888888;">연락처</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${shippingAddress?.phone || "없음"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; color: #888888;">배송 주소</td>
+        <td style="padding: 5px 0; font-weight: bold; color: #4A3E3D;">${shippingAddress?.address || ""} ${shippingAddress?.detailAddress || ""}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="text-align: center; font-size: 11px; color: #888888; margin-top: 30px; border-top: 1px solid #E8D5C4; padding-top: 15px;">
+    본 알림은 PINO공방 정기구독 신청 시 자동 발송되는 어드민 알림 메일입니다.<br/>
+    관리자 콘솔에서 배송 및 주문 세부 이력을 관리하실 수 있습니다.
+  </div>
+</div>
+`;
+
+      const adminTextContent = `
+[PINO공방 - 관리자 알림] 새로운 정기구독 신청이 등록되었습니다!
+
+■ 가입 회원 정보
+- 신청인 성함: ${userName}
+- 계정 이메일: ${userEmail}
+
+■ 신청 구독 정보
+- 선택 패키지: ${packageLabel} (${packageName})
+- 월 구독 요금: ${price === 0 ? "0원 (무료 체험단)" : price.toLocaleString() + "원"}
+- 첫 배송 예정일: ${nextDeliveryDate}
+- 입금 예정자명: ${depositor || "체험단/없음"}
+
+■ 배송지 상세 정보
+- 수령인: ${shippingAddress?.name || userName}
+- 연락처: ${shippingAddress?.phone || "없음"}
+- 주소지: ${shippingAddress?.address || ""} ${shippingAddress?.detailAddress || ""}
+
+관리자 콘솔에서 해당 구독 상태 및 입금 이력을 확인하시고 출고 준비를 활성화해 주세요.
+`;
+
       // Log to terminal for debugging and validation
       console.log(`\n======================================================\n📧 [EMAIL DISPATCH SIMULATED / QUEUED]\nTo: ${userEmail}\nSubject: [PINO공방] ${packageLabel} 정기구독 신청 완료 안내\n------------------------------------------------------\n${textContent}\n======================================================\n`);
+      console.log(`\n======================================================\n📧 [ADMIN EMAIL DISPATCH SIMULATED / QUEUED]\nTo: ${adminEmail}\nSubject: [PINO공방 - 관리자 알림] 새로운 정기구독 신청 알림\n------------------------------------------------------\n${adminTextContent}\n======================================================\n`);
 
       if (!smtpUser || !smtpPass) {
         console.warn(
-          "⚠️ Email Sending Fallback: SMTP_USER or SMTP_PASS is not defined in environment variables. Email logged to console."
+          "⚠️ Email Sending Fallback: SMTP_USER or SMTP_PASS is not defined in environment variables. Emails logged to console."
         );
         return res.status(200).json({
           success: true,
           simulated: true,
-          message: "Email simulated successfully. Configure SMTP in environment to send real emails.",
+          message: "Emails simulated successfully. Configure SMTP in environment to send real emails to subscriber & admin.",
         });
       }
 
@@ -256,6 +345,7 @@ ${infoBoxText}
         },
       });
 
+      // Send to User
       await transporter.sendMail({
         from: `"${smtpFromName}" <${smtpFromEmail}>`,
         to: userEmail,
@@ -264,7 +354,16 @@ ${infoBoxText}
         html: htmlContent,
       });
 
-      console.log(`✅ Real email successfully sent to ${userEmail}!`);
+      // Send to Admin
+      await transporter.sendMail({
+        from: `"${smtpFromName}" <${smtpFromEmail}>`,
+        to: adminEmail,
+        subject: `[PINO공방 - 관리자 알림] 새로운 정기구독 신청 알림 🎁`,
+        text: adminTextContent,
+        html: adminHtmlContent,
+      });
+
+      console.log(`✅ Real emails successfully sent to user (${userEmail}) and admin (${adminEmail})!`);
       return res.status(200).json({ success: true, simulated: false });
 
     } catch (error) {

@@ -1067,3 +1067,18 @@ export async function updateSubscriptionStatus(id: string, status: Subscription[
   }
 }
 
+export async function fetchAllSubscriptions(): Promise<Subscription[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'subscriptions'));
+    const subs: Subscription[] = [];
+    querySnapshot.forEach((doc) => {
+      subs.push({ id: doc.id, ...(doc.data() as Subscription) });
+    });
+    return subs.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'subscriptions');
+    return [];
+  }
+}
+
+

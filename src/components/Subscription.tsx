@@ -188,6 +188,7 @@ export default function SubscriptionComponent({
           detailAddress: shippingDetail
         },
         paymentMethod: selectedPkg.price === 0 ? 'none' : 'bank_transfer',
+        depositor: selectedPkg.price === 0 ? '무료체험단' : depositor,
         nextDeliveryDate: nextDateStr
       };
 

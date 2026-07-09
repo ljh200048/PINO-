@@ -206,6 +206,7 @@ export interface Subscription {
     detailAddress: string;
   };
   paymentMethod: 'bank_transfer' | 'none';
+  depositor?: string;
   createdAt: number;
   nextDeliveryDate: string;
 }
